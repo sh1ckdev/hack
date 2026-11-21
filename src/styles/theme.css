@@ -1,0 +1,141 @@
+/*
+ * Granat 2.0 / Variables — токены с витрины МТС (moskva.mts.ru), design.mts.ru
+ * --color-control-primary-active, --color-background-secondary и т.д.
+ */
+:root {
+  --color-brand: #ff0032;
+  --color-control-primary-active: #ff0032;
+  --color-control-primary-hover: #e6002e;
+  --color-control-tertiary-active: #f2f3f7;
+  --color-control-tertiary-hover: #e2e5eb;
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f2f3f7;
+  --color-background-stroke: rgba(188, 195, 208, 0.5);
+  --color-background-hover: rgba(188, 195, 208, 0.25);
+  --color-background-overlay: rgba(29, 32, 35, 0.4);
+  --color-text-primary: #1d2023;
+  --color-text-secondary: #626c77;
+  --color-text-tertiary: #969fa8;
+  --color-text-primary-link: #0070e5;
+  --color-text-primary-link-hover: #007cff;
+  --color-text-negative: #d8400c;
+
+  --signal: var(--color-brand);
+  --signal-foreground: #ffffff;
+  --link: var(--color-text-primary-link);
+  --radius: 12px;
+  --radius-card: 16px;
+  --radius-modal: 20px;
+
+  --workspace: var(--color-background-secondary);
+  --background: var(--workspace);
+  --foreground: var(--color-text-primary);
+  --card: var(--color-background-primary);
+  --popover: var(--color-background-primary);
+  --primary: var(--color-control-primary-active);
+  --primary-foreground: #ffffff;
+  --secondary: var(--color-control-tertiary-active);
+  --secondary-foreground: var(--color-text-primary);
+  --muted: var(--color-control-tertiary-active);
+  --muted-foreground: var(--color-text-secondary);
+  --accent: var(--color-background-hover);
+  --accent-foreground: var(--color-text-primary);
+  --destructive: var(--color-text-negative);
+  --border: var(--color-background-stroke);
+  --input: rgba(188, 195, 208, 0.65);
+  --ring: var(--color-control-primary-active);
+  --chart-1: var(--color-brand);
+  --chart-2: var(--color-text-primary-link);
+  --chart-3: #8b33ff;
+  --chart-4: #f37f19;
+  --chart-5: #d8400c;
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  --sidebar: var(--color-background-primary);
+  --sidebar-foreground: var(--color-text-primary);
+  --sidebar-primary: var(--color-brand);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--color-background-secondary);
+  --sidebar-accent-foreground: var(--color-text-primary);
+  --sidebar-border: var(--color-background-stroke);
+  --sidebar-ring: var(--color-brand);
+  --granat-shadow: 0 4px 16px rgba(29, 32, 35, 0.06);
+}
+
+.dark {
+  --color-background-primary: #1d2023;
+  --color-background-secondary: #12151a;
+  --color-control-tertiary-active: #2c313a;
+  --color-control-tertiary-hover: #343944;
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #969fa8;
+  --color-text-tertiary: #8d969f;
+  --color-text-primary-link: #45b6fc;
+  --color-background-stroke: rgba(188, 195, 208, 0.2);
+  --color-background-hover: rgba(242, 243, 247, 0.12);
+  --link: var(--color-text-primary-link);
+  --workspace: var(--color-background-secondary);
+  --background: var(--workspace);
+  --foreground: var(--color-text-primary);
+  --card: #252932;
+  --popover: #2c313a;
+  --primary: #ff4d6a;
+  --primary-foreground: #ffffff;
+  --secondary: var(--color-control-tertiary-active);
+  --muted: #1f232a;
+  --muted-foreground: var(--color-text-secondary);
+  --accent: var(--color-background-hover);
+  --border: var(--color-background-stroke);
+  --signal: #ff4d6a;
+  --sidebar: #181b21;
+  --sidebar-foreground: var(--color-text-primary);
+  --granat-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+@theme inline {
+  --color-signal: var(--signal);
+  --color-signal-foreground: var(--signal-foreground);
+  --color-link: var(--link);
+  --font-sans: 'MTS Compact', Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Menlo', monospace;
+  --font-inter: 'MTS Compact', Arial, sans-serif;
+  --font-manrope: 'MTS Compact', Arial, sans-serif;
+  --font-ibm: 'MTS Compact', Arial, sans-serif;
+  --font-system: 'MTS Compact', Arial, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius-card);
+  --radius-xl: var(--radius-modal);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}

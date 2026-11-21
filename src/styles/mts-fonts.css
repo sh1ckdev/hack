@@ -1,0 +1,27 @@
+/* MTS Compact — публичные woff2 с static.mts.ru (как на витрине МТС). */
+@font-face {
+  font-family: 'MTS Compact';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://static.mts.ru/mts_rf/images/fonts/v1/MTSCompact/MTSCompact-Regular.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'MTS Compact';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://static.mts.ru/mts_rf/images/fonts/v1/MTSCompact/MTSCompact-Medium.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'MTS Compact';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://static.mts.ru/mts_rf/images/fonts/v1/MTSCompact/MTSCompact-Bold.woff2')
+    format('woff2');
+}
