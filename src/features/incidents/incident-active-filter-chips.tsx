@@ -204,7 +204,7 @@ export function IncidentActiveFilterChips({
         type='button'
         variant='ghost'
         size='sm'
-        className='h-8 rounded-xl px-2.5 text-sm font-normal text-link'
+        className='h-8 rounded-xl px-2.5 text-sm font-normal text-foreground'
         onClick={reset}
       >
         Сбросить все

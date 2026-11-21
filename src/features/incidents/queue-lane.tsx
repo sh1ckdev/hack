@@ -9,9 +9,6 @@ const LANE_PREVIEW = 6
 
 const columnAccent: Record<string, string> = {
   critical: 'border-t-signal',
-  coordinators: 'border-t-chart-2',
-  high: 'border-t-chart-4',
-  research: 'border-t-chart-3',
 }
 
 export const QueueLane = memo(
@@ -81,16 +78,14 @@ export const QueueLane = memo(
         id={`queue-${groupKey}`}
         aria-labelledby={`group-${groupKey}`}
         className={cn(
-          'flex h-full min-w-[17rem] min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card',
-          groupKey === 'critical' && 'ring-1 ring-signal/25'
+          'flex h-full min-w-[17rem] min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card'
         )}
       >
         <div
           className={cn(
             'flex shrink-0 items-baseline justify-between gap-2 border-b border-border/60 px-3 py-2',
             'border-t-[3px]',
-            columnAccent[groupKey] ?? 'border-t-border',
-            groupKey === 'critical' && 'bg-signal/[0.06]'
+            columnAccent[groupKey] ?? 'border-t-border'
           )}
         >
           <h3
@@ -102,7 +97,7 @@ export const QueueLane = memo(
           >
             {groupKey === 'critical' && (
               <span
-                className='size-1.5 shrink-0 animate-pulse rounded-full bg-signal'
+                className='size-1.5 shrink-0 rounded-full bg-signal'
                 aria-hidden
               />
             )}

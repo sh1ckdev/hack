@@ -396,10 +396,12 @@ export const dashboardSchema = z.object({
 })
 export type DashboardSnapshot = z.infer<typeof dashboardSchema>
 
-export const analysisSchema = summarySchema.extend({
+export const analysisSchema = z.object({
+  symptom: z.string().trim().min(1),
+  known: z.string().trim().min(1),
+  gap: z.string().trim().min(1).nullable(),
+  action: z.string().trim().min(1),
   revision: z.string(),
-  evidence: z.array(z.string()),
-  nextStep: z.string(),
   source: z.enum(['openai', 'openrouter', 'template']).optional(),
 })
 

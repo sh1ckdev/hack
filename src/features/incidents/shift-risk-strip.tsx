@@ -71,7 +71,7 @@ export function ShiftRiskStrip({
     return (
       <p
         className={cn(
-          'shrink-0 text-xs text-chart-2 tabular-nums',
+          'shrink-0 text-xs text-muted-foreground tabular-nums',
           className
         )}
         title='Активные риски смены не обнаружены'
@@ -99,12 +99,7 @@ export function ShiftRiskStrip({
           type='button'
           className={cn(
             'granat-chip h-7 shrink-0 cursor-pointer px-2 py-0 text-xs tabular-nums',
-            chip.tone === 'danger' &&
-              'border-signal/40 bg-signal/10 text-signal',
-            chip.tone === 'warn' &&
-              'border-chart-4/40 bg-chart-4/10 text-foreground',
-            chip.tone === 'info' &&
-              'border-link/35 bg-link/10 text-link'
+            chip.tone === 'danger' && 'text-signal'
           )}
           title={`Перейти к примеру: ${chip.label}`}
           onClick={() => onJump(chip.key)}

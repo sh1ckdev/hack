@@ -127,7 +127,7 @@ function ShiftTrailSpark({
           ref={streakRef}
           className={cn(
             'stroke-[2.5]',
-            toCritical ? 'stroke-signal' : 'stroke-chart-2'
+            toCritical ? 'stroke-signal' : 'stroke-foreground/35'
           )}
         />
       </svg>
@@ -135,7 +135,7 @@ function ShiftTrailSpark({
         ref={chipRef}
         className={cn(
           'shift-trail-spark pointer-events-none fixed z-[91]',
-          toCritical ? 'border-signal/55 ring-signal/35' : 'border-chart-2/50 ring-chart-2/30'
+          toCritical ? 'border-signal/50' : 'border-border'
         )}
         role='presentation'
       >

@@ -108,7 +108,7 @@ export function IncidentDetails({
         </p>
       )}
       {onCoordinators && (
-        <div className='rounded-2xl border border-chart-2/30 bg-chart-2/8 p-4 text-sm wrap-anywhere'>
+        <div className='rounded-2xl border border-border bg-secondary p-4 text-sm wrap-anywhere'>
           <h3 className='granat-title text-base'>Куда передать</h3>
           <p className='mt-1'>
             {handoff
@@ -136,10 +136,7 @@ export function IncidentDetails({
         </div>
       )}
       <div className='rounded-2xl border border-border bg-secondary/60 p-4'>
-        <h3 className='granat-title text-base'>ИИ-сводка</h3>
-        <p className='granat-caption mt-1'>
-          Краткие факты, гипотезы и подсказка координатору по полям выгрузки.
-        </p>
+        <h3 className='granat-title text-base'>Сводка</h3>
         <div className='mt-3 flex flex-wrap gap-2'>
           <Button
             size='sm'
@@ -148,7 +145,7 @@ export function IncidentDetails({
             disabled={isPending}
           >
             {isPending
-              ? 'Готовим…'
+              ? 'Запрос…'
               : summaryStale
                 ? 'Обновить сводку'
                 : 'Запросить сводку'}
@@ -187,39 +184,40 @@ export function IncidentDetails({
         >
           {data.summary.source === 'template' && (
             <p className='text-xs text-muted-foreground'>
-              По полям выгрузки (модель не подключена).
+              По полям заявки, без модели.
             </p>
           )}
-          {data.summary.source === 'openrouter' && (
+          {data.summary.source && data.summary.source !== 'template' && (
             <p className='text-xs text-muted-foreground'>
-              Текст сформирован моделью (OpenRouter).
+              Сформулировано моделью по полям заявки.
             </p>
           )}
           <div>
             <h3 className='granat-caption text-sm font-medium text-foreground'>
-              Выжимка (факты)
+              Симптом
             </h3>
-            <p className='mt-1 whitespace-pre-wrap'>{data.summary.facts}</p>
+            <p className='mt-1'>{data.summary.symptom}</p>
           </div>
           <div>
             <h3 className='granat-caption text-sm font-medium text-foreground'>
-              Гипотезы и риски
+              Известно
             </h3>
-            <p className='mt-1 whitespace-pre-wrap'>
-              {data.summary.hypotheses}
-            </p>
+            <p className='mt-1'>{data.summary.known}</p>
           </div>
-          <div>
-            <h3 className='granat-caption text-sm font-medium text-foreground'>
-              Подсказка координатору
-            </h3>
-            <p className='mt-1'>{data.summary.nextStep}</p>
-          </div>
-          {!!data.summary.evidence.length && (
-            <p className='text-xs text-muted-foreground'>
-              Поля: {data.summary.evidence.join(', ')}
-            </p>
+          {data.summary.gap && (
+            <div>
+              <h3 className='granat-caption text-sm font-medium text-foreground'>
+                Не сходится
+              </h3>
+              <p className='mt-1'>{data.summary.gap}</p>
+            </div>
           )}
+          <div>
+            <h3 className='granat-caption text-sm font-medium text-foreground'>
+              Сделать
+            </h3>
+            <p className='mt-1'>{data.summary.action}</p>
+          </div>
         </section>
       )}
     </DialogContent>

@@ -30,24 +30,22 @@ export const PriorityShiftTicker = memo(function PriorityShiftTicker({
   return (
     <div
       className={cn(
-        'shrink-0 border-b border-border/60 bg-gradient-to-r from-muted/40 via-card/50 to-muted/30 px-4 py-2.5',
+        'shrink-0 border-b border-border bg-card px-4 py-2',
         className
       )}
       data-ticker-sig={signature}
       aria-label='Последние сдвиги приоритета'
     >
-      <p className='mb-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase'>
-        Сдвиги приоритета
-      </p>
+      <p className='mb-2 text-xs text-muted-foreground'>Сдвиги приоритета</p>
       <ul className='no-scrollbar flex gap-2 overflow-x-auto pb-0.5'>
         {items.map((event) => (
           <li key={event.seq} className='shrink-0'>
             <button
               type='button'
-              className='max-w-[14rem] rounded-lg border border-border/60 bg-card/95 px-2.5 py-1.5 text-left text-[11px] shadow-xs transition-colors hover:border-chart-2/30 hover:bg-accent/30'
+              className='max-w-56 rounded-md border border-border bg-card px-2.5 py-1.5 text-start text-xs transition-colors hover:bg-accent'
               onClick={() => onOpen(event.incidentId)}
             >
-              <span className='font-mono text-link'>{event.incidentId}</span>
+              <span className='font-mono text-foreground'>{event.incidentId}</span>
               <span className='mt-0.5 block truncate text-muted-foreground'>
                 {event.detail ||
                   eventHeadline(event.reasons)}

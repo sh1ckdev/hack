@@ -27,7 +27,7 @@ const chatUrl =
     : 'https://api.openai.com/v1/chat/completions')
 const model =
   env.INCIDENT_AI_MODEL ||
-  (openRouter ? 'baidu/ernie-5.5-flash-preview:free' : 'gpt-4o-mini')
+  (openRouter ? 'google/gemma-4-31b-it:free' : 'gpt-4o-mini')
 const key = openRouter
   ? env.OPENROUTER_API_KEY || env.INCIDENT_AI_KEY || ''
   : env.INCIDENT_AI_KEY || env.OPENAI_API_KEY || ''

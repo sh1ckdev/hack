@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Menu, X } from 'lucide-react'
+import { Logo } from '@/assets/logo'
 import { cn } from '@/lib/utils'
 import {
   SidebarMenu,
@@ -20,13 +21,13 @@ export function AppTitle() {
           asChild
         >
           <div className='flex min-w-0 flex-1 items-center gap-2.5'>
-            <MtsMark className='max-md:hidden' aria-hidden />
+            <Logo className='max-md:hidden' />
             <Link
               to='/'
               onClick={() => setOpenMobile(false)}
               className='grid min-w-0 flex-1 text-start text-sm leading-tight'
             >
-              <span className='truncate text-sm font-semibold tracking-tight'>
+              <span className='truncate text-sm font-medium'>
                 Relay Console
               </span>
               <span className='truncate text-xs text-muted-foreground'>
@@ -38,33 +39,6 @@ export function AppTitle() {
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
-}
-
-function MtsMark({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex size-9 shrink-0 items-center justify-center rounded-[var(--radius)] bg-primary',
-        className
-      )}
-    >
-      <svg
-        width='18'
-        height='18'
-        viewBox='0 0 18 18'
-        fill='none'
-        xmlns='http://www.w3.org/2000/svg'
-        aria-hidden
-      >
-        <path
-          d='M3 5h12M10 9H3M10 13H3'
-          stroke='white'
-          strokeWidth='1.8'
-          strokeLinecap='round'
-        />
-      </svg>
-    </span>
   )
 }
 

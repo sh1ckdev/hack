@@ -25,7 +25,7 @@ export function DemoIncident({ incidentId }: { incidentId: string }) {
         <article className='max-w-3xl space-y-5 rounded-2xl border bg-card p-5 sm:p-8'>
           <div className='space-y-2'>
             <Badge variant='secondary'>Демо · только просмотр</Badge>
-            <h1 className='text-2xl font-extrabold break-all'>{incidentId}</h1>
+            <h1 className='text-2xl font-medium break-all'>{incidentId}</h1>
             <p className='text-sm text-muted-foreground'>
               Локальная карточка из выгрузки. Изменения в рабочей системе МТС
               здесь недоступны.
@@ -40,7 +40,7 @@ export function DemoIncident({ incidentId }: { incidentId: string }) {
           )}
           {incident ? (
             <>
-              <h2 className='text-lg font-bold wrap-anywhere'>
+              <h2 className='text-lg font-medium wrap-anywhere'>
                 {incident.header || 'Инцидент'}
               </h2>
               <p className='text-sm wrap-anywhere'>

@@ -118,17 +118,15 @@ function ConnectorSegment({ x1, y1, x2, y2 }: Segment) {
           width: length,
           transform: `translateY(-50%) rotate(${angle}deg)`,
           transformOrigin: '0 50%',
-          background:
-            'linear-gradient(90deg, #ff0032 0%, #0070e5 100%)',
-          boxShadow: '0 0 0 1px color-mix(in srgb, #ff0032 18%, transparent)',
+          background: '#ff0032',
         }}
       />
       <div
-        className='absolute size-2.5 rounded-full border border-white/80 bg-[#ff0032] shadow-sm'
+        className='absolute size-2 rounded-full bg-[#ff0032]'
         style={{ left: x1, top: y1, transform: 'translate(-50%, -50%)' }}
       />
       <div
-        className='absolute size-2.5 rounded-full border border-white/80 bg-[#0070e5] shadow-sm'
+        className='absolute size-2 rounded-full bg-[#ff0032]'
         style={{ left: x2, top: y2, transform: 'translate(-50%, -50%)' }}
       />
     </>

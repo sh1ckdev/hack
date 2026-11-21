@@ -17,18 +17,8 @@ import { buildSlaForecast } from './sla-forecast'
 import { useNow } from './use-now'
 
 function priorityBadgeClass(priorityId: number | null | undefined) {
-  switch (priorityId) {
-    case 4:
-      return 'border-signal/40 bg-signal/10 text-signal'
-    case 3:
-      return 'border-chart-4/45 bg-chart-4/12 text-foreground'
-    case 2:
-      return 'border-chart-3/40 bg-chart-3/10 text-foreground'
-    case 1:
-      return 'border-border/80 bg-muted/40 text-muted-foreground'
-    default:
-      return 'border-dashed text-muted-foreground'
-  }
+  if (priorityId === 4) return 'border-signal/40 text-signal'
+  return 'border-border text-muted-foreground'
 }
 
 function IncidentCardInner({
@@ -89,15 +79,10 @@ function IncidentCardInner({
         'min-w-0 scroll-mt-4 rounded-2xl border border-border bg-card transition-colors duration-150 hover:bg-[var(--color-background-hover)] focus:outline-2 focus:outline-ring',
         compact ? 'px-3.5 py-2.5' : room ? 'px-4 py-4' : 'px-4 py-3.5',
         critical &&
-          'border-signal/40 border-l-[3px] border-l-signal bg-signal/[0.03] shadow-sm',
-        critical &&
-          (highlighted ? 'animate-critical-border shadow-md' : 'animate-critical-idle'),
-        watched && 'ring-1 ring-chart-2/50',
-        linked &&
-          'z-[1] bg-primary/[0.06] shadow-md ring-2 ring-inset ring-dashed ring-primary/80',
-        highlighted &&
-          !critical &&
-          'shadow-sm ring-1 ring-chart-2/35 transition-shadow duration-300'
+          'border-signal/40 border-l-[3px] border-l-signal bg-signal/[0.03]',
+        watched && 'ring-1 ring-foreground/20',
+        linked && 'z-[1] ring-1 ring-inset ring-foreground/25',
+        highlighted && !critical && 'ring-1 ring-foreground/20'
       )}
     >
       <div className='flex items-start justify-between gap-3'>
@@ -114,7 +99,7 @@ function IncidentCardInner({
             {(incident.groups?.length ?? 0) > 1 && (
               <button
                 type='button'
-                className='inline-flex shrink-0 cursor-pointer items-center gap-0.5 rounded-lg border border-link/30 bg-link/10 px-1.5 py-0.5 text-[10px] font-medium text-link hover:bg-link/20 focus-visible:outline-2 focus-visible:outline-ring'
+                className='inline-flex shrink-0 cursor-pointer items-center gap-0.5 rounded-md border border-border px-1.5 py-0.5 text-[10px] font-medium text-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring'
                 title='Один INC в нескольких секциях — наведите или нажмите, чтобы показать линию'
                 onClick={(event) => {
                   event.stopPropagation()
@@ -154,8 +139,8 @@ function IncidentCardInner({
       )}
       {priorityShiftHint && (
         <p
-          className='mt-1.5 rounded-sm border border-chart-4/25 bg-chart-4/5 px-2 py-0.5 text-[11px] text-muted-foreground wrap-anywhere'
-          title='Недавний сдвиг — лента над канбаном и журнал «Приоритет»'
+          className='mt-1.5 rounded-sm border border-border px-2 py-0.5 text-[11px] text-muted-foreground wrap-anywhere'
+          title='Недавний сдвиг приоритета'
         >
           {priorityShiftHint}
         </p>
@@ -164,16 +149,15 @@ function IncidentCardInner({
         <p
           className={cn(
             'mt-1.5 rounded-sm border px-2 py-0.5 text-[11px] wrap-anywhere',
-            slaForecast.level === 'high' &&
-              'border-signal/35 bg-signal/10 text-signal',
+            (slaForecast.level === 'high' ||
+              slaForecast.level === 'breached') &&
+              'border-signal/40 text-signal',
             slaForecast.level === 'medium' &&
-              'border-chart-4/30 bg-chart-4/8 text-foreground',
-            slaForecast.level === 'breached' &&
-              'border-destructive/30 bg-destructive/10 text-destructive'
+              'border-border text-muted-foreground'
           )}
           title={slaForecast.detail}
         >
-          <span className='font-medium'>{slaForecast.label}.</span>{' '}
+          <span className='font-medium'>{slaForecast.label}</span>{' '}
           {slaForecast.reasons.join(' · ')}
         </p>
       )}
@@ -190,13 +174,7 @@ function IncidentCardInner({
           <dd>
             <Badge
               variant='outline'
-              className={cn(
-                'rounded-sm font-normal',
-                resolved && 'border-chart-2/40 text-chart-2',
-                !resolved &&
-                  incident.stateEnum === 'Research' &&
-                  'border-chart-3/40 text-chart-3'
-              )}
+              className='rounded-sm border-border font-normal text-foreground'
             >
               {incidentStatus(incident)}
             </Badge>
@@ -275,7 +253,7 @@ function IncidentCardInner({
             type='button'
             aria-haspopup='dialog'
             aria-label={`Сводка по ${incident.id}`}
-            className='rounded-md px-1.5 py-0.5 text-xs font-medium text-link hover:bg-accent/60'
+            className='rounded-md px-1.5 py-0.5 text-xs font-medium text-foreground hover:bg-accent'
             onClick={(event) => onOpen(event.currentTarget)}
           >
             Сводка
@@ -289,7 +267,7 @@ function IncidentCardInner({
               aria-pressed={watched}
               className={cn(
                 'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground',
-                watched && 'bg-chart-2/10 text-chart-2'
+                watched && 'text-foreground'
               )}
               onClick={onToggleWatch}
             >

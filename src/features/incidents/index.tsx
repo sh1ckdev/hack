@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { Logo } from '@/assets/logo'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -9,10 +9,8 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { IncidentDetails } from './incident-details'
 import { filterIncidents, sortIncidentsForDisplay } from './incident-filters'
@@ -27,9 +25,9 @@ import {
   reasonLabels,
   type DashboardSnapshot,
 } from './model'
-import { eventsSignature, laneSignature } from './lane-signature'
+import { laneSignature } from './lane-signature'
 import { QueueLane } from './queue-lane'
-import { ShiftFeed } from './shift-feed'
+import { QueueSummaryStrip } from './queue-summary-strip'
 import {
   buildShiftStartedBrief,
   OPEN_INCIDENT_EVENT,
@@ -71,17 +69,10 @@ import {
   isPriorityShiftEvent,
   planFreshEventToasts,
   PRIORITY_HIGHLIGHT_MS,
-  SHIFT_EVENT_JOURNAL_CAP,
 } from './shift-event-notify'
 import { useIncidentFilters } from './use-incident-filters'
 import { PRIORITY_BURST_EVENT } from './shift-calm'
 import { useShiftCalm } from './use-shift-calm'
-import { useStation } from './use-station'
-import { StationSwitch } from './station-switch'
-import { WallClock } from './wall-status'
-import { MyDesk } from './my-desk'
-import { incidentsForSeat, operatorSeats } from './station'
-import { defaultIncidentFilterPrefs } from './incident-filters'
 
 export function IncidentsDashboard() {
   const { data } = useIncidentDashboard()
@@ -112,9 +103,6 @@ export function IncidentsDashboard() {
   const { prefs: filterPrefs, setPrefs: setFilterPrefs, reset: resetFilters, activeCount: filterActiveCount } =
     useIncidentFilters()
   const { prefs: calmPrefs, setPrefs: setCalmPrefs } = useShiftCalm()
-  const station = useStation()
-  const wall = station.mode === 'wall'
-  const wallPrefs = useMemo(() => defaultIncidentFilterPrefs(), [])
   const calmEnabledRef = useRef(calmPrefs.enabled)
   calmEnabledRef.current = calmPrefs.enabled
   const watchedRef = useRef(watched)
@@ -287,8 +275,8 @@ export function IncidentsDashboard() {
       filterIncidents(data?.incidents ?? [], filterPrefs, filterCtx),
     [data?.incidents, filterPrefs, filterCtx]
   )
-  const queueIncidents = wall ? (data?.incidents ?? []) : visibleIncidents
-  const queuePrefs = wall ? wallPrefs : filterPrefs
+  const queueIncidents = visibleIncidents
+  const queuePrefs = filterPrefs
   const sorted = useMemo(
     () =>
       sortIncidentsForDisplay(queueIncidents, queuePrefs, watched, sortNow),
@@ -298,14 +286,6 @@ export function IncidentsDashboard() {
     () => buildShiftRiskSummary(queueIncidents, sortNow),
     [queueIncidents, sortNow]
   )
-  const seats = useMemo(
-    () => operatorSeats(data?.incidents ?? []),
-    [data?.incidents]
-  )
-  const mine = useMemo(
-    () => incidentsForSeat(data?.incidents ?? [], station.login),
-    [data?.incidents, station.login]
-  )
   const shiftFocusOn = isShiftFocusActive(filterPrefs)
   const priorityHints = useMemo(
     () =>
@@ -314,8 +294,6 @@ export function IncidentsDashboard() {
         : buildRecentPriorityHints(data?.events ?? [], sortNow),
     [data?.events, sortNow, calmPrefs.enabled]
   )
-  const journalAtCap =
-    (data?.events.length ?? 0) >= SHIFT_EVENT_JOURNAL_CAP
   const lanes = useMemo(() => {
     const rows = incidentGroups.map((group) => {
       const items = sorted.filter((incident) =>
@@ -370,11 +348,6 @@ export function IncidentsDashboard() {
     if (shiftFocusOn) resetFilters()
     else setFilterPrefs({ ...filterPrefs, ...shiftFocusFilterPatch() })
   }, [filterPrefs, resetFilters, setFilterPrefs, shiftFocusOn])
-
-  const openFromFeed = useCallback(
-    (id: string) => openIncident(id, true),
-    [openIncident]
-  )
 
   const handleOpenCard = useCallback(
     (id: string, trigger: HTMLButtonElement) => {
@@ -510,13 +483,9 @@ export function IncidentsDashboard() {
   }
 
   return (
-    <div
-      className={cn(
-        'flex min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden',
-        wall && 'dash-wall'
-      )}
-    >
+    <div className='flex min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden'>
       <Header fixed showSidebar={false}>
+        <Logo />
         <h1
           ref={titleRef}
           tabIndex={-1}
@@ -524,7 +493,6 @@ export function IncidentsDashboard() {
         >
           Массовые инциденты
         </h1>
-        <StationSwitch mode={station.mode} onChange={station.setMode} />
         <div
           className='flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 text-sm max-lg:basis-full max-lg:order-3'
           role='status'
@@ -533,133 +501,98 @@ export function IncidentsDashboard() {
             <ShiftRiskStrip summary={shiftRisk} onJump={jumpShiftRisk} />
           )}
         </div>
-        {wall && <WallClock />}
-        {!wall && (
-          <div className='flex shrink-0 items-center gap-2 max-lg:order-2 max-lg:ms-auto'>
-            <Button
-              type='button'
-              size='sm'
-              variant={shiftFocusOn ? 'default' : 'outline'}
-              className='h-9 hidden sm:inline-flex'
-              disabled={!data}
-              onClick={toggleShiftFocus}
-              title='Только активные, сортировка по очереди'
-            >
-              Фокус смены
-            </Button>
-            <Button
-              type='button'
-              size='sm'
-              variant='outline'
-              className='h-9 hidden md:inline-flex'
-              disabled={!data}
-              onClick={() => setDefenseWizardOpen(true)}
-            >
-              Для демо
-            </Button>
-            <Button
-              type='button'
-              size='sm'
-              variant={shiftAnchor ? 'ghost' : 'default'}
-              className='h-9'
-              disabled={!data}
-              onClick={() => setShiftBriefOpen(true)}
-            >
-              Смена началась
-            </Button>
-          </div>
-        )}
-        {!wall && (
-          <>
-            <Separator
-              orientation='vertical'
-              className='mx-0.5 hidden h-6 lg:block max-lg:order-4'
-            />
-            <div className='flex shrink-0 items-center gap-1 max-lg:order-4'>
-              <ShiftAlertsControl />
-              <ThemeSwitch />
-              <ConfigDrawer />
-              <ProfileDropdown />
-            </div>
-          </>
-        )}
+        <div className='flex shrink-0 items-center gap-2 max-lg:order-2 max-lg:ms-auto'>
+          <Button
+            type='button'
+            size='sm'
+            variant={shiftFocusOn ? 'default' : 'outline'}
+            className='h-9 hidden sm:inline-flex'
+            disabled={!data}
+            onClick={toggleShiftFocus}
+            title='Только активные, сортировка по очереди'
+          >
+            Фокус смены
+          </Button>
+          <Button
+            type='button'
+            size='sm'
+            variant='outline'
+            className='h-9 hidden md:inline-flex'
+            disabled={!data}
+            onClick={() => setDefenseWizardOpen(true)}
+          >
+            Для демо
+          </Button>
+          <Button
+            type='button'
+            size='sm'
+            variant={shiftAnchor ? 'ghost' : 'default'}
+            className='h-9'
+            disabled={!data}
+            onClick={() => setShiftBriefOpen(true)}
+          >
+            Смена началась
+          </Button>
+        </div>
+        <Separator
+          orientation='vertical'
+          className='mx-0.5 hidden h-6 lg:block max-lg:order-4'
+        />
+        <div className='flex shrink-0 items-center gap-1 max-lg:order-4'>
+          <ShiftAlertsControl />
+          <ThemeSwitch />
+        </div>
       </Header>
       <Main
         fixed
         fluid
         className='min-h-0 flex-1 flex-col gap-0 overflow-hidden px-0 py-0'
       >
-        <div
-          className={cn(
-            'dash-canvas grid min-h-0 w-full max-w-none flex-1 gap-3 overflow-hidden p-3',
-            wall
-              ? 'grid-rows-[minmax(0,1fr)_minmax(12rem,24vh)] min-[1440px]:grid-cols-[minmax(0,1fr)_minmax(24rem,32rem)] min-[1440px]:grid-rows-1'
-              : 'grid-rows-[minmax(16rem,42%)_minmax(0,1fr)_10.5rem] xl:grid-cols-[minmax(26rem,38%)_minmax(0,1fr)] xl:grid-rows-[minmax(0,1fr)_11rem] min-[1680px]:grid-cols-[minmax(28rem,40rem)_minmax(0,1fr)_minmax(20rem,24rem)] min-[1680px]:grid-rows-1'
-          )}
-        >
-          {!wall && (
-            <MyDesk
-              className='xl:row-start-1'
-              login={station.login}
-              seats={seats}
-              incidents={mine}
-              onLogin={station.setLogin}
-              highlighted={highlighted}
-              isWatched={isWatched}
-              onToggleWatch={toggleWatch}
-              onOpenCard={handleOpenCard}
-              priorityHints={priorityHints}
-              linkedIncidentId={linkedIncidentId}
-              onLinkEnter={handleLinkEnter}
-              onLinkLeave={handleLinkLeave}
-              onLinkPin={handleLinkPin}
-            />
-          )}
-
+        <div className='dash-canvas flex min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden p-3'>
           <div
-            className={cn(
-              'flex min-h-0 min-w-0 flex-col overflow-hidden',
-              wall ? 'bg-transparent' : 'dash-panel'
-            )}
+            className='dash-panel flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
             aria-label='Канбан четырёх групп кейса'
           >
-            {!wall && (
-              <div className='dash-section-head space-y-0 p-0'>
-                <div className='flex items-center gap-2 px-4 py-3'>
-                  <h2 className='granat-title shrink-0'>Очереди команды</h2>
-                  <GranatSearch
-                    className='ms-2 hidden min-w-0 flex-1 md:block'
-                    value={filterPrefs.query}
-                    onValueChange={(query) => setFilterPrefs({ query })}
-                  />
-                  <IncidentFiltersControl
-                    className='ms-auto shrink-0'
-                    prefs={filterPrefs}
-                    setPrefs={setFilterPrefs}
-                    reset={resetFilters}
-                    activeCount={filterActiveCount}
-                    incidents={data?.incidents ?? []}
-                    detailCards={!calmPrefs.enabled}
-                    onDetailCardsChange={(detail) =>
-                      setCalmPrefs({
-                        enabled: !detail,
-                        compactCards: !detail,
-                      })
-                    }
-                  />
-                </div>
+            <div className='dash-section-head space-y-0 p-0'>
+              <div className='flex items-center gap-2 px-4 py-3'>
+                <h2 className='granat-title shrink-0'>Очереди команды</h2>
                 <GranatSearch
-                  className='px-4 pb-3 md:hidden'
+                  className='ms-2 hidden min-w-0 flex-1 md:block'
                   value={filterPrefs.query}
                   onValueChange={(query) => setFilterPrefs({ query })}
                 />
-                <IncidentActiveFilterChips
+                <IncidentFiltersControl
+                  className='ms-auto shrink-0'
                   prefs={filterPrefs}
                   setPrefs={setFilterPrefs}
                   reset={resetFilters}
+                  activeCount={filterActiveCount}
+                  incidents={data?.incidents ?? []}
+                  detailCards={!calmPrefs.enabled}
+                  onDetailCardsChange={(detail) =>
+                    setCalmPrefs({
+                      enabled: !detail,
+                      compactCards: !detail,
+                    })
+                  }
                 />
               </div>
-            )}
+              <GranatSearch
+                className='px-4 pb-3 md:hidden'
+                value={filterPrefs.query}
+                onValueChange={(query) => setFilterPrefs({ query })}
+              />
+              <IncidentActiveFilterChips
+                prefs={filterPrefs}
+                setPrefs={setFilterPrefs}
+                reset={resetFilters}
+              />
+              <QueueSummaryStrip
+                incidents={data?.incidents ?? []}
+                now={sortNow}
+                onOpen={(id) => openIncident(id, true)}
+              />
+            </div>
             <div ref={queueScrollRef} className='dash-kanban-board'>
               <div className='flex h-full w-full min-w-0 gap-3'>
                 {lanes.map(
@@ -672,7 +605,7 @@ export function IncidentsDashboard() {
                     priorityHintSignature,
                   }) => (
                   <QueueLane
-                    key={`${column.key}-${wall ? 'wall' : calmPrefs.enabled ? 'calm' : 'full'}`}
+                    key={`${column.key}-${calmPrefs.enabled ? 'calm' : 'full'}`}
                     groupKey={column.key}
                     title={column.title}
                     items={items}
@@ -683,33 +616,21 @@ export function IncidentsDashboard() {
                     ready={!!data}
                     highlightedIds={highlightedIds}
                     isWatched={isWatched}
-                    onToggleWatch={wall ? undefined : toggleWatch}
+                    onToggleWatch={toggleWatch}
                     onOpenCard={handleOpenCard}
                     linkedIncidentId={linkedIncidentId}
                     onLinkEnter={handleLinkEnter}
                     onLinkLeave={handleLinkLeave}
                     onLinkPin={handleLinkPin}
-                    calmMode={!wall && calmPrefs.enabled}
-                    compactCard={!wall && calmPrefs.enabled && calmPrefs.compactCards}
-                    previewLimit={wall ? 40 : 8}
-                    room={wall}
+                    calmMode={calmPrefs.enabled}
+                    compactCard={calmPrefs.enabled && calmPrefs.compactCards}
+                    previewLimit={40}
                   />
                 )
                 )}
               </div>
             </div>
           </div>
-          <ShiftFeed
-            className={cn(
-              'min-h-0',
-              !wall && 'xl:col-span-2 min-[1680px]:col-span-1 min-[1680px]:col-start-3 min-[1680px]:row-start-1'
-            )}
-            events={data?.events ?? []}
-            signature={eventsSignature(data?.events ?? [])}
-            journalAtCap={journalAtCap}
-            journalCap={SHIFT_EVENT_JOURNAL_CAP}
-            onOpenIncident={openFromFeed}
-          />
         </div>
       </Main>
       <ShiftTrailOverlay

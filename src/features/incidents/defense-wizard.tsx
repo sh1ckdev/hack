@@ -50,7 +50,7 @@ export function DefenseWizard({
     try {
       await postDemo('/api/demo/reset')
       await queryClient.resetQueries({ queryKey: ['incident-dashboard'] })
-      toast.success('Выгрузка сброшена, лента обнулена.')
+      toast.success('Выгрузка сброшена.')
       setStep(1)
     } catch (error) {
       toast.error(
@@ -66,7 +66,7 @@ export function DefenseWizard({
     try {
       await postDemo(`/api/demo/scenario/${encodeURIComponent(key)}`)
       await queryClient.invalidateQueries({ queryKey: ['incident-dashboard'] })
-      toast.success('Сценарий применён — смотрите ленту и канбан.')
+      toast.success('Сценарий применён.')
       setStep((s) => s + 1)
       requestAnimationFrame(() => onFocusIncident(DEFENSE_DEMO_INCIDENT_ID))
     } catch (error) {
@@ -89,7 +89,7 @@ export function DefenseWizard({
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
         onFocusOutside={(event) => event.preventDefault()}
-        className='fixed top-auto right-auto bottom-4 left-4 z-50 w-[min(100vw-2rem,22rem)] max-w-none translate-x-0 translate-y-0 gap-3 border-border bg-card p-4 shadow-[var(--granat-shadow)] data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-2 data-[state=open]:slide-in-from-left-2 sm:max-w-[22rem]'
+        className='fixed top-auto right-auto bottom-4 left-4 z-50 w-[min(100vw-2rem,22rem)] max-w-none translate-x-0 translate-y-0 gap-3 border-border bg-card p-4 shadow-[var(--granat-shadow)] sm:max-w-[22rem]'
       >
         <DialogTitle className='text-base'>Для демо</DialogTitle>
         <DialogDescription className='sr-only'>
@@ -118,7 +118,7 @@ export function DefenseWizard({
             </p>
           </div>
         ) : isDone ? (
-          <p className='text-sm text-chart-2'>
+          <p className='text-sm text-foreground'>
             Цепочка завершена. Можно закрыть мастер или начать сначала.
           </p>
         ) : null}
