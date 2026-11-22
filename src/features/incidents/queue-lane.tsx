@@ -22,6 +22,7 @@ export const QueueLane = memo(
     priorityHints,
     ready,
     highlightedIds,
+    attentionKey,
     isWatched,
     onToggleWatch,
     onOpenCard,
@@ -44,6 +45,7 @@ export const QueueLane = memo(
     priorityHints: Map<string, { detail: string; seq: number }>
     ready: boolean
     highlightedIds: string
+    attentionKey?: number
     isWatched: (id: string) => boolean
     onToggleWatch?: (id: string) => void
     onOpenCard: (id: string, trigger: HTMLButtonElement) => void
@@ -78,14 +80,18 @@ export const QueueLane = memo(
         id={`queue-${groupKey}`}
         aria-labelledby={`group-${groupKey}`}
         className={cn(
-          'flex h-full min-w-[17rem] min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card'
+          'relative flex h-full min-w-[17rem] min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card'
         )}
       >
+        {attentionKey !== undefined && (
+          <span key={attentionKey} aria-hidden className='critical-lane-attention' />
+        )}
         <div
           className={cn(
             'flex shrink-0 items-baseline justify-between gap-2 border-b border-border/60 px-3 py-2',
             'border-t-[3px]',
-            columnAccent[groupKey] ?? 'border-t-border'
+            columnAccent[groupKey] ?? 'border-t-border',
+            groupKey === 'critical' && items.length > 0 && 'bg-signal/5'
           )}
         >
           <h3
@@ -193,6 +199,7 @@ export const QueueLane = memo(
     left.priorityHintSignature === right.priorityHintSignature &&
     left.ready === right.ready &&
     left.highlightedIds === right.highlightedIds &&
+    left.attentionKey === right.attentionKey &&
     left.title === right.title &&
     left.groupKey === right.groupKey &&
     left.calmMode === right.calmMode &&

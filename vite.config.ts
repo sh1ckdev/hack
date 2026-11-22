@@ -29,6 +29,13 @@ export default defineConfig(({ mode }) => ({
     },
   },
   server: {
+    proxy: {
+      '/api/voice': {
+        target: 'http://127.0.0.1:8178',
+        changeOrigin: false,
+        rewrite: (requestPath) => requestPath.replace(/^\/api\/voice/, ''),
+      },
+    },
     watch: {
       // Правки выгрузки не должны делать full reload вкладки.
       ignored: ['**/data/**'],

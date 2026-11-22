@@ -34,9 +34,9 @@ export function buildShiftRiskSummary(
   )?.match
 
   for (const incident of incidents) {
+    if (coordinatorsMatch?.(incident)) coordinators += 1
     if (!isActive(incident)) continue
     if (isActiveCritical(incident)) critical += 1
-    if (coordinatorsMatch?.(incident)) coordinators += 1
     if ((incident.groups?.length ?? 0) > 1) multiSection += 1
     if (!incident.assignedEmployee?.trim()) unassigned += 1
   }
@@ -64,7 +64,7 @@ export function firstIncidentForRisk(
   )?.match
 
   for (const incident of incidents) {
-    if (!isActive(incident) && kind !== 'multiSection') continue
+    if (!isActive(incident) && kind !== 'multiSection' && kind !== 'coordinators') continue
     switch (kind) {
       case 'overdue': {
         const time = Date.parse(incident.deadline ?? '')

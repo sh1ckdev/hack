@@ -269,7 +269,7 @@ async function main() {
     await runAll(file, wait || 1200)
     return
   }
-  await runScenario(scenario, file, 0)
+  await runScenario(scenario, file, wait)
 }
 
 main().catch((err) => {

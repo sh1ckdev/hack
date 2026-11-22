@@ -4,6 +4,7 @@ import {
   filterIncidents,
   passesIncidentFilters,
   sortIncidentsForDisplay,
+  type IncidentFilterPrefs,
 } from './incident-filters'
 import type { DashboardSnapshot } from './model'
 
@@ -25,7 +26,7 @@ describe('incident filters', () => {
   const ctx = { watched: new Set(['INC002']), now }
 
   it('matches by query and priority', () => {
-    const prefs = {
+    const prefs: IncidentFilterPrefs = {
       ...defaultIncidentFilterPrefs(),
       query: 'vpn',
       priorities: ['3'],

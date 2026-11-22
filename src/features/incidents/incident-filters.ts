@@ -127,7 +127,7 @@ const searchFields = (incident: Incident) =>
     .filter(Boolean)
   .join(' ')
 
-const knownStates = new Set(
+const knownStates = new Set<string>(
   STATE_OPTIONS.map(({ value }) => value).filter((v) => v !== '__other__')
 )
 

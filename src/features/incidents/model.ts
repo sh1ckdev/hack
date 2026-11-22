@@ -81,12 +81,12 @@ export function matchesPriorityColumn(
     )
   return incident.priorityId === column.priorityId
 }
-export const isActive = (incident: Incident) =>
+export const isActive = (incident: Pick<Incident, 'stateEnum'>) =>
   incident.stateEnum === 'Assigned' || incident.stateEnum === 'WorkInProgress'
 
 export const isActiveCritical = (incident: Incident) =>
   isActive(incident) && incident.priorityId === 4
-const isAssignedToCoordinators = (incident: Incident) =>
+export const isAssignedToCoordinators = (incident: Incident) =>
   (isActive(incident) || incident.stateEnum === 'Research') &&
   incident.assignedGroupName === coordinatorGroup
 
@@ -132,10 +132,10 @@ const statuses: Readonly<Record<string, string>> = {
   Closed: 'Закрыт',
   Research: 'Исследование',
 }
-export const incidentStatus = (incident: Incident) =>
+export const incidentStatus = (incident: Pick<Incident, 'stateEnum'>) =>
   statuses[incident.stateEnum ?? ''] ?? incident.stateEnum ?? 'Не указан'
 
-export const isResolved = (incident: Incident) =>
+export const isResolved = (incident: Pick<Incident, 'stateEnum'>) =>
   incident.stateEnum === 'Resolved' || incident.stateEnum === 'Closed'
 
 export const reasonLabels = {

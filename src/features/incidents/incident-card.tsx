@@ -3,6 +3,7 @@ import { Bookmark, ExternalLink, Link2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { incidentDestination } from './incident-destination'
+import { ShiftCoordinationMark } from './shift-coordination'
 import {
   formatDate,
   remainingTime,
@@ -79,7 +80,7 @@ function IncidentCardInner({
         'min-w-0 scroll-mt-4 rounded-2xl border border-border bg-card transition-colors duration-150 hover:bg-[var(--color-background-hover)] focus:outline-2 focus:outline-ring',
         compact ? 'px-3.5 py-2.5' : room ? 'px-4 py-4' : 'px-4 py-3.5',
         critical &&
-          'border-signal/40 border-l-[3px] border-l-signal bg-signal/[0.03]',
+          'border-signal/20 bg-signal/[0.02]',
         watched && 'ring-1 ring-foreground/20',
         linked && 'z-[1] ring-1 ring-inset ring-foreground/25',
         highlighted && !critical && 'ring-1 ring-foreground/20'
@@ -283,6 +284,7 @@ function IncidentCardInner({
           <span className='text-[11px] text-muted-foreground'>демо ITSM</span>
         )}
       </div>
+      <ShiftCoordinationMark id={incident.id} />
     </article>
   )
 }

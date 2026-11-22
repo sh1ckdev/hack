@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "voice:setup": "bash scripts/setup-whisper.sh",
+    "voice:server": "bash scripts/start-whisper.sh",
+    "voice:ai": "bash scripts/start-voice-ai.sh",
+    "dev:voice": "bash scripts/dev-voice.sh",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -16,6 +20,7 @@
     "demo:reset": "node scripts/demo-reset.mjs",
     "demo:case": "node scripts/demo-case.mjs",
     "demo:defense": "node scripts/demo-case.mjs defense --wait 1500",
+    "demo:show": "node scripts/demo-show.mjs",
     "ai:watch": "node scripts/watch-ai.mjs",
     "ai:watch:probe": "node scripts/watch-ai.mjs --probe",
     "test:watch": "vitest --browser.headless",

@@ -1,11 +1,21 @@
+import { z } from 'zod'
 import { isActive, type Incident } from './model'
 import { SLA_SOON_MS } from './ops'
 
-export type EscalationSignal =
-  | 'sameProduct'
-  | 'unassigned'
-  | 'deadline'
-  | 'productLoad'
+const escalationSignalSchema = z.enum([
+  'sameProduct',
+  'unassigned',
+  'deadline',
+  'productLoad',
+])
+export type EscalationSignal = z.infer<typeof escalationSignalSchema>
+
+export const escalationAssessmentSchema = z.object({
+  risk: z.enum(['moderate', 'high']),
+  primarySignal: escalationSignalSchema,
+  explanation: z.string().trim().min(1).max(500),
+  nextStep: z.string().trim().min(1).max(300),
+})
 
 export const escalationSignalLabel: Record<EscalationSignal, string> = {
   sameProduct: 'тот же продукт, что у критического',
@@ -60,8 +70,10 @@ export function escalationSignals(
   if (product && criticalProducts.has(product)) signals.push('sameProduct')
   if (!incident.assignedEmployee?.trim()) signals.push('unassigned')
   const time = Date.parse(incident.deadline ?? '')
-  if (Number.isFinite(time) && time - now <= SLA_SOON_MS) signals.push('deadline')
-  if (product && (activeByProduct.get(product) ?? 0) >= 2) signals.push('productLoad')
+  if (Number.isFinite(time) && time - now <= SLA_SOON_MS)
+    signals.push('deadline')
+  if (product && (activeByProduct.get(product) ?? 0) >= 2)
+    signals.push('productLoad')
   return signals
 }
 
@@ -84,7 +96,11 @@ export function buildQueueSummary(
   }
 
   const withDeadline = criticals
-    .filter((incident) => Number.isFinite(deadlineMs(incident)) && deadlineMs(incident) !== Number.POSITIVE_INFINITY)
+    .filter(
+      (incident) =>
+        Number.isFinite(deadlineMs(incident)) &&
+        deadlineMs(incident) !== Number.POSITIVE_INFINITY
+    )
     .sort(byDeadline)
   const nearest = withDeadline[0]
   const nearestCritical = nearest
@@ -94,7 +110,12 @@ export function buildQueueSummary(
   const rising = active
     .map((incident) => ({
       incident,
-      signals: escalationSignals(incident, now, criticalProducts, activeByProduct),
+      signals: escalationSignals(
+        incident,
+        now,
+        criticalProducts,
+        activeByProduct
+      ),
     }))
     .filter(({ signals }) => signals.length >= 2)
     .sort(

@@ -118,6 +118,21 @@
   font-size: 1.05rem;
 }
 
+@utility critical-lane-attention {
+  @apply pointer-events-none absolute inset-0 z-10 rounded-[inherit];
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--signal) 55%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--signal) 22%, transparent);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: critical-lane-arrival 2.8s ease-out both;
+  }
+}
+
+@keyframes critical-lane-arrival {
+  0%, 100% { opacity: 0; }
+  14% { opacity: 1; }
+}
+
 @utility dash-kanban-board {
   @apply min-h-0 w-full flex-1 overflow-x-auto overflow-y-hidden overscroll-x-contain p-2 lg:p-3 lg:overflow-x-hidden;
 }

@@ -1,8 +1,64 @@
 import {
   coordinatorGroupName,
   isActive,
+  isResolved,
   type Incident,
 } from './model'
+
+export function findHandoffAnalogues(incident: Incident, all: Incident[]) {
+  const product = incident.productName?.trim()
+  const service = incident.service?.trim()
+  const words = (text: string) =>
+    new Set(text.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?? [])
+  const symptom = words(
+    [incident.header, incident.shortDescription].filter(Boolean).join(' ')
+  )
+  return all
+    .flatMap((candidate) => {
+      const sameProduct = Boolean(
+        product && product === candidate.productName?.trim()
+      )
+      const sameService = Boolean(
+        service && service === candidate.service?.trim()
+      )
+      const solution = candidate.solution?.trim()
+      if (
+        candidate.id === incident.id ||
+        (!sameProduct && !sameService) ||
+        !solution ||
+        (!isResolved(candidate) && !candidate.completionDate)
+      )
+        return []
+      const candidateWords = words(
+        [candidate.header, candidate.shortDescription].filter(Boolean).join(' ')
+      )
+      const shared = [...symptom].filter((word) =>
+        candidateWords.has(word)
+      ).length
+      return [
+        {
+          candidate,
+          solution,
+          score:
+            Number(sameService) * 4 +
+            Number(sameProduct) * 2 +
+            Math.min(shared, 3),
+          evidence: [
+            sameService && 'тот же сервис',
+            sameProduct && 'тот же продукт',
+            shared > 0 && 'совпадения в описании',
+          ]
+            .filter(Boolean)
+            .join(', '),
+        },
+      ]
+    })
+    .sort(
+      (a, b) =>
+        b.score - a.score || a.candidate.id.localeCompare(b.candidate.id)
+    )
+    .slice(0, 3)
+}
 
 export type HandoffRoute = {
   team: string
@@ -49,7 +105,9 @@ export function suggestHandoff(
 }
 
 export function handoffLine(route: HandoffRoute) {
-  const main = `Передать в «${route.team}» — ${route.count} из ${route.productActive} активных по этому продукту уже там.`
+  if (route.also?.count === route.count)
+    return `Одинаково частые назначения: «${route.team}» и «${route.also.team}» (по ${route.count}). Сверьте сервис перед передачей.`
+  const main = `Кандидат — «${route.team}» — ${route.count} из ${route.productActive} активных по этому продукту уже там.`
   if (!route.also) return main
   return `${main} Ещё: «${route.also.team}» — ${route.also.count}.`
 }
