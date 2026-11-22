@@ -1,36 +1,34 @@
 #!/usr/bin/env node
-import { cpSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { copyFileSync, existsSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { defaultDataFile } from './demo-lib.mjs'
 
-const root = resolve(import.meta.dirname, '..')
-const source = resolve(root, 'data/character_problems.source.json')
-const target = resolve(root, 'data/character_problems.json')
+const target = defaultDataFile()
+const source = resolve(dirname(target), 'character_problems.source.json')
+const port = Number(process.env.DEMO_PORT || 5182)
 
-cpSync(source, target)
-console.log('Выгрузка: source → character_problems.json')
-
-const ports = [5173, 5174, 5175, 4173, 5180, 5181, 5182]
-for (const port of ports) {
+async function reset() {
+  if (!existsSync(source)) throw new Error('Сначала создайте демо-выгрузку: npm run demo:showcase.')
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Некорректный DEMO_PORT.')
+  let response
   try {
-    const response = await fetch(`http://127.0.0.1:${port}/api/demo/reset`, {
+    response = await fetch(`http://127.0.0.1:${port}/api/demo/reset?profile=showcase`, {
       method: 'POST',
+      signal: AbortSignal.timeout(2500),
     })
-    if (response.ok) {
-      const body = await response.json().catch(() => ({}))
-      console.log(
-        `Сервер :${port}: лента событий сброшена (runId ${body.runId ?? '—'}).`
-      )
-      console.log(
-        'Закладки «Следить» — только в браузере (localStorage); обнови страницу.'
-      )
-      process.exit(0)
-    }
-  } catch {
-    // dev не на этом порту
+  } catch (error) {
+    if (error.cause?.code !== 'ECONNREFUSED') throw error
+    copyFileSync(source, target)
+    console.log('Демо-выгрузка восстановлена. Запустите npm run demo:dev.')
+    return
   }
+  const result = await response.json().catch(() => ({}))
+  if (!response.ok || result.ok !== true)
+    throw new Error(result.error || 'Не удалось сбросить наглядную демо-выгрузку.')
+  console.log(`Наглядная демо-выгрузка и история сброшены на порту ${port}.`)
 }
 
-console.log(
-  'Файл восстановлен. Если dev не запущен — подними npm run dev; лента обнулится при старте.'
-)
-process.exit(0)
+reset().catch((error) => {
+  console.error(error.message)
+  process.exitCode = 1
+})

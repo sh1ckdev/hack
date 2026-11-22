@@ -94,10 +94,10 @@
 **Если попросят именно статус «Решён».** Основная цепочка показывает переход в исследование. Для отдельной проверочной сцены на демо-копии снова примените `critical-up`, дождитесь отображения P4 и выполните из корня проекта:
 
 ```sh
-node --input-type=module - "$DEMO_FILE" <<'JS'
+node --input-type=module - .local/showcase/character_problems.json <<'JS'
 import { loadIncidents, patchById, saveIncidents } from './scripts/demo-lib.mjs'
 const file = process.argv[2]
-if (!file?.startsWith('/tmp/relay-demo.')) throw new Error('Укажите отдельную демо-копию')
+if (file !== '.local/showcase/character_problems.json') throw new Error('Укажите отдельную демо-копию')
 const incidents = loadIncidents(file)
 patchById(incidents, 'INC000021938167', {
   stateEnum: 'Resolved',

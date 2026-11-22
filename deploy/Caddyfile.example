@@ -1,0 +1,6 @@
+dashboard.example.com {
+	basic_auth {
+		{$DASHBOARD_USER} {$DASHBOARD_PASSWORD_HASH}
+	}
+	reverse_proxy 127.0.0.1:8080
+}

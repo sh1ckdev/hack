@@ -1,0 +1,66 @@
+:root {
+  color-scheme: dark;
+  --background: #13171e;
+  --surface: #242832;
+  --line: #444a56;
+  --text: #f5f6fa;
+  --muted: #afb6c3;
+  --link: #83ceff;
+  --critical: #ff0035;
+  --error: #ffa6ac;
+  font-family: system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--background); color: var(--text); }
+.top, main { padding-inline: clamp(1rem, 4vw, 4rem); }
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-block: 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+a { color: var(--link); }
+.home { color: var(--text); font-weight: 700; text-decoration: none; }
+main { padding-block: clamp(1rem, 4vw, 3rem); margin: 0 auto; max-width: 110rem; }
+h1 { font-size: clamp(1.6rem, 3vw, 2.3rem); margin: 0; }
+.intro { color: var(--muted); margin: .6rem 0 1.6rem; }
+.toolbar, .actions, .access-row { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; }
+.toolbar { justify-content: space-between; padding: .85rem; }
+label { font-weight: 600; }
+#workspace { background: var(--surface); border: 1px solid var(--line); border-radius: .8rem; overflow: hidden; }
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 15rem;
+  height: 60vh;
+  resize: vertical;
+  padding: 1rem;
+  background: var(--background);
+  color: var(--text);
+  border: 0;
+  border-top: 1px solid var(--line);
+  font: .9rem/1.6 ui-monospace, monospace;
+  tab-size: 2;
+}
+button, #key {
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  min-height: 2.5rem;
+  padding: .4rem .75rem;
+}
+button:not(:disabled) { cursor: pointer; }
+button.primary { color: white; background: #c6002c; border-color: var(--critical); }
+button:disabled { opacity: .5; }
+button:hover:not(:disabled) { border-color: var(--text); }
+:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.access-row { margin-top: .5rem; }
+#key { width: min(24rem, 100%); }
+#status { color: var(--muted); overflow-wrap: anywhere; }
+#status.error { color: var(--error); }

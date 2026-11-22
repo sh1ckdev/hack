@@ -98,8 +98,8 @@ function actionLine(record: BriefInput, handoffTeam: string | null) {
 
   if (solution && isActive(record)) {
     const confirm = who
-      ? `${who} подтверждает, что записанное решение сняло ${piece}, и заявку закрывают.`
-      : `Подтвердите, что записанное решение сняло ${piece}, и закройте заявку.`
+      ? `Попросите исполнителя ${who} проверить, исчез ли сбой ${piece} после записанных действий. Закрывайте заявку после подтверждения.`
+      : `Проверьте, исчез ли сбой ${piece} после записанных действий. Закрывайте заявку после подтверждения.`
     return handoff
       ? `${confirm} Если нет — передайте в ${handoff}.`
       : `${confirm} Если нет — найдите профильную команду по продукту.`
@@ -113,7 +113,7 @@ function actionLine(record: BriefInput, handoffTeam: string | null) {
 
   return handoff
     ? `Передайте ${piece} в ${handoff} и зафиксируйте срок.`
-    : `Уточните у ${who}, кто устраняет ${piece}, и зафиксируйте срок.`
+    : `Попросите исполнителя ${who} сообщить результат последней проверки по ${piece} и время следующего обновления.`
 }
 
 export function buildResolutionBrief(

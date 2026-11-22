@@ -9,6 +9,7 @@
  * Перед прогоном: npm run demo:reset
  */
 import { resolve } from 'node:path'
+import { existsSync } from 'node:fs'
 import {
   COORDINATORS,
   DEMO_IDS,
@@ -138,7 +139,7 @@ const SCENARIOS = {
         priorityId: 4,
         stateEnum: 'Research',
         assignedGroupName: COORDINATORS,
-        completionDate: isoIn(-1),
+        completionDate: isoIn(0),
       })
     },
   },
@@ -261,6 +262,7 @@ async function main() {
     return
   }
   const { file, wait, scenario } = opts
+  if (!existsSync(file)) throw new Error('Выгрузка не найдена. Выполните npm run demo:showcase или укажите --file.')
   if (scenario === 'defense') {
     await runDefense(file, wait || 1500)
     return

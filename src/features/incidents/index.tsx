@@ -1,6 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { toast } from 'sonner'
 import { Logo } from '@/assets/logo'
+import { useTheme } from '@/context/theme-provider'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -13,7 +21,11 @@ import { GranatSearch } from '@/components/granat/granat-search'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { DefenseWizard } from './defense-wizard'
+import {
+  DEFENSE_DEMO_INCIDENT_ID,
+  type DefenseScenarioKey,
+} from './defense-script'
+import { DefenseWizard, type DefenseWizardActions } from './defense-wizard'
 import { FocusReview } from './focus-review'
 import { transferHistory, waitingOnCoordinators } from './history-insights'
 import { IncidentActiveFilterChips } from './incident-active-filter-chips'
@@ -51,13 +63,19 @@ import { buildQueueSummary } from './queue-summary'
 import { QueueSummaryStrip } from './queue-summary-strip'
 import {
   deliverShiftAlert,
+  desktopNotificationPermission,
   primeShiftAlertAudio,
   readShiftAlertPrefs,
+  writeShiftAlertPrefs,
+  type ShiftAlertPrefs,
 } from './shift-alerts'
 import { ShiftAlertsControl } from './shift-alerts-control'
 import { readShiftAnchor, writeShiftAnchor } from './shift-anchor'
 import { PRIORITY_BURST_EVENT } from './shift-calm'
-import { ShiftCoordinationProvider } from './shift-coordination'
+import {
+  ShiftCoordinationProvider,
+  useShiftCoordinationAction,
+} from './shift-coordination'
 import {
   buildRecentPriorityHints,
   highlightIncidentIds,
@@ -80,12 +98,27 @@ import { useNow } from './use-now'
 import { useShiftCalm } from './use-shift-calm'
 import { useWatchlist } from './use-watchlist'
 import { VoiceBrief, type VoiceBriefState } from './voice-brief'
-import { VoiceCommand } from './voice-command'
+import { VoiceCommand, type VoiceCommandResult } from './voice-command'
 import {
   interpretVoiceCommand,
-  matchVoiceBrief,
+  matchVoiceCommand,
+  resolveVoiceIncidentIds,
+  voiceSearchFallback,
+  type VoiceIntent,
   type VoiceBriefTopic,
 } from './voice-intent'
+
+const demoDestinations: Record<
+  DefenseScenarioKey,
+  { to: string; from?: string }
+> = {
+  'critical-up': { from: 'high', to: 'critical' },
+  coordinators: { from: 'critical', to: 'coordinators' },
+  deadline: { to: 'coordinators' },
+  'dual-section': { to: 'critical' },
+  'resolved-research': { from: 'critical', to: 'research' },
+  engineers: { from: 'coordinators', to: 'research' },
+}
 
 export function IncidentsDashboard() {
   return (
@@ -97,7 +130,20 @@ export function IncidentsDashboard() {
 
 function IncidentBoard() {
   const { data } = useIncidentDashboard()
+  const { context: coordination, action: coordinationAction } =
+    useShiftCoordinationAction()
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [assessmentId, setAssessmentId] = useState<string | null>(null)
+  const [analysisRequest, setAnalysisRequest] = useState<number>()
+  const analysisSequence = useRef(0)
+  const [alertPrefs, setAlertPrefs] = useState(readShiftAlertPrefs)
+  const { setTheme } = useTheme()
+  const setShiftAlerts = useCallback((patch: Partial<ShiftAlertPrefs>) => {
+    const next = { ...readShiftAlertPrefs(), ...patch }
+    writeShiftAlertPrefs(next)
+    setAlertPrefs(next)
+  }, [])
   const [wallMode, setWallMode] = useState(() =>
     new URLSearchParams(window.location.search).has('wall')
   )
@@ -133,6 +179,9 @@ function IncidentBoard() {
   )
   const [focusCard, setFocusCard] = useState<{ id: string } | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [incidentSection, setIncidentSection] = useState<'summary' | 'handoff'>(
+    'summary'
+  )
   const lastTrigger = useRef<HTMLButtonElement | null>(null)
   const titleRef = useRef<HTMLHeadingElement | null>(null)
   const queueScrollRef = useRef<HTMLDivElement | null>(null)
@@ -150,8 +199,17 @@ function IncidentBoard() {
   const [activeTrails, setActiveTrails] = useState<ActiveShiftTrail[]>([])
   const [shiftBriefOpen, setShiftBriefOpen] = useState(false)
   const [defenseWizardOpen, setDefenseWizardOpen] = useState(false)
+  const demoOpenRef = useRef(false)
+  demoOpenRef.current = defenseWizardOpen
+  const demoSequence = useRef(0)
+  const [demoReveal, setDemoReveal] = useState<{
+    key: number
+    lane: string
+    trail?: ActiveShiftTrail
+  } | null>(null)
+  const defenseActions = useRef<DefenseWizardActions>(null)
   const [shiftAnchor, setShiftAnchor] = useState(readShiftAnchor)
-  const { toggle: toggleWatch, isWatched, watched } = useWatchlist()
+  const { toggle: toggleWatch, setWatched, isWatched, watched } = useWatchlist()
   const {
     prefs: filterPrefs,
     setPrefs: setFilterPrefs,
@@ -213,72 +271,6 @@ function IncidentBoard() {
     return `Ответ по ${context.id} готов.`
   }, [])
 
-  const applyVoiceCommand = useCallback(
-    async (transcript: string, signal: AbortSignal) => {
-      if (signal.aborted) return ''
-      const briefTopic = matchVoiceBrief(transcript)
-      if (briefTopic) return showVoiceBrief(briefTopic)
-      let intent
-      try {
-        intent = await interpretVoiceCommand(transcript, signal)
-      } catch (error) {
-        if (signal.aborted) return ''
-        const command = transcript
-          .toLocaleLowerCase('ru-RU')
-          .replace(/[.!?]+$/, '')
-        if (
-          /^(сбрось фильтры|очисти фильтры|убери фильтры|все заявки|покажи все(?: заявки)?)$/.test(
-            command
-          )
-        ) {
-          resetFilters()
-          return 'Фильтры сброшены без ИИ.'
-        }
-        const onlyCritical =
-          /^(?:покажи )?критические(?: инциденты| заявки)?$/.test(command)
-        const onlyOverdue =
-          /^(?:покажи )?просроченные(?: инциденты| заявки)?$/.test(command)
-        const onlyCoordinators =
-          /^(?:покажи )?(?:назначенные координаторам|заявки у координаторов)$/.test(
-            command
-          )
-        const query =
-          transcript.match(/\bINC\d+\b/i)?.[0] ??
-          transcript.match(/^(?:найди|ищи|поиск)\s+(.+?)\s*[.!?]*$/i)?.[1] ??
-          ''
-        if (!onlyCritical && !onlyOverdue && !onlyCoordinators && !query) {
-          if (error instanceof Error && error.name === 'TimeoutError')
-            return 'Голосовой запрос занял слишком много времени. Повторите команду.'
-          if (error instanceof Error && error.name === 'Error')
-            return error.message
-          return 'Не удалось обработать голосовую команду. Попробуйте ещё раз.'
-        }
-        replaceFilterPrefs({
-          ...defaultIncidentFilterPrefs(),
-          onlyCritical,
-          onlyOverdue,
-          onlyCoordinators,
-          onlyActive: onlyCritical || onlyOverdue || onlyCoordinators,
-          query,
-        })
-        return 'Команда применена без ИИ.'
-      }
-      if (signal.aborted) return ''
-      if (intent.action === 'brief') return showVoiceBrief(intent.topic)
-      if (intent.action === 'unsupported')
-        return 'Не понял команду. Попробуйте «Что взять первым?» или «Покажи критические».'
-      if (intent.action === 'reset') {
-        resetFilters()
-        return 'ИИ сбросил фильтры.'
-      }
-      const next = defaultIncidentFilterPrefs()
-      for (const key of intent.filters) next[key] = true
-      next.query = intent.query
-      replaceFilterPrefs(next)
-      return 'ИИ применил фильтры.'
-    },
-    [replaceFilterPrefs, resetFilters, showVoiceBrief]
-  )
   const calmEnabledRef = useRef(calmPrefs.enabled)
   calmEnabledRef.current = calmPrefs.enabled
   const watchedRef = useRef(watched)
@@ -332,7 +324,14 @@ function IncidentBoard() {
           })
         }, highlightMs)
       }
-      const trailPlans = planShiftTrails(groupsSnapshot, data.incidents, fresh)
+      const trailPlans = planShiftTrails(
+        groupsSnapshot,
+        data.incidents,
+        fresh
+      ).filter(
+        ({ incidentId }) =>
+          !demoOpenRef.current || incidentId !== DEFENSE_DEMO_INCIDENT_ID
+      )
       if (trailPlans.length) {
         const base = latest * 10
         setActiveTrails((current) =>
@@ -420,8 +419,8 @@ function IncidentBoard() {
   }, [data])
 
   useEffect(() => {
-    if (focusCard) document.getElementById(focusCard.id)?.focus()
-  }, [focusCard])
+    if (focusCard && !selectedId) document.getElementById(focusCard.id)?.focus()
+  }, [focusCard, selectedId])
 
   const incidentsRef = useRef<DashboardSnapshot['incidents']>([])
   incidentsRef.current = data?.incidents ?? []
@@ -453,11 +452,17 @@ function IncidentBoard() {
         : buildRecentPriorityHints(data?.events ?? [], sortNow),
     [data?.events, sortNow, calmPrefs.enabled]
   )
+  const demoIncident = defenseWizardOpen
+    ? data?.incidents.find(({ id }) => id === DEFENSE_DEMO_INCIDENT_ID)
+    : undefined
   const lanes = useMemo(() => {
     const rows = incidentGroups.map((group) => {
-      const items = sorted.filter((incident) =>
-        incident.groups.includes(group.key)
+      const items = sorted.filter(
+        (incident) =>
+          incident.id !== demoIncident?.id &&
+          incident.groups.includes(group.key)
       )
+      if (demoIncident?.groups.includes(group.key)) items.unshift(demoIncident)
       return {
         column: group,
         items,
@@ -480,15 +485,88 @@ function IncidentBoard() {
       }
     })
     return rows
-  }, [sorted, highlighted, watched, priorityHints])
+  }, [sorted, highlighted, watched, priorityHints, demoIncident])
   const openIncident = useCallback((id: string, openDialog = true) => {
     const incident = incidentsRef.current.find((item) => item.id === id)
     if (!incident) return
     const laneKey = primaryQueueLane(incident)
     scrollToGroup(laneKey, true)
     setFocusCard({ id: `incident-${laneKey}-${id}` })
-    if (openDialog) setSelectedId(id)
+    if (openDialog) {
+      const trigger = document.activeElement
+      lastTrigger.current =
+        trigger instanceof HTMLButtonElement &&
+        !trigger.closest('[role="dialog"]')
+          ? trigger
+          : null
+      setAnalysisRequest(undefined)
+      setIncidentSection('summary')
+      setSelectedId(id)
+    }
   }, [])
+
+  function changeDemoOpen(open: boolean) {
+    setDefenseWizardOpen(open)
+    if (!open) {
+      setDemoReveal(null)
+      setActiveTrails((current) => current.filter((trail) => !trail.demo))
+    }
+  }
+
+  function revealDemoIncident(id: string, scenario?: DefenseScenarioKey) {
+    const incident = incidentsRef.current.find((item) => item.id === id)
+    if (!incident) return
+    const destination = scenario ? demoDestinations[scenario] : undefined
+    const lane =
+      destination && incident.groups.includes(destination.to)
+        ? destination.to
+        : primaryQueueLane(incident)
+    const key = --demoSequence.current
+    setDemoReveal({
+      key,
+      lane,
+      trail:
+        destination?.from && destination.from !== lane
+          ? {
+              key,
+              incidentId: id,
+              fromLane: destination.from,
+              toLane: lane,
+              product: incident.productName ?? undefined,
+              demo: true,
+            }
+          : undefined,
+    })
+  }
+
+  useLayoutEffect(() => {
+    if (!defenseWizardOpen || !demoReveal) return
+    const board = queueScrollRef.current
+    const lane = board?.querySelector<HTMLElement>(
+      `[data-queue-lane="${demoReveal.lane}"]`
+    )
+    if (!board || !lane) return
+    const viewport = board.getBoundingClientRect()
+    const destination = lane.getBoundingClientRect()
+    if (destination.left < viewport.left || destination.right > viewport.right)
+      board.scrollLeft += destination.left - viewport.left - 8
+    const cards = board.querySelectorAll<HTMLElement>('[data-queue-cards]')
+    for (const column of cards) {
+      if (
+        column.querySelector(`[data-incident-id="${DEFENSE_DEMO_INCIDENT_ID}"]`)
+      )
+        column.scrollTop = 0
+    }
+    if (!demoReveal.trail) return
+    const trail = demoReveal.trail
+    const frame = requestAnimationFrame(() => {
+      setActiveTrails((current) => [
+        ...current.filter((item) => !item.demo),
+        trail,
+      ])
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [defenseWizardOpen, demoReveal])
 
   const jumpShiftRisk = useCallback(
     (kind: keyof ShiftRiskSummary) => {
@@ -507,6 +585,8 @@ function IncidentBoard() {
   const handleOpenCard = useCallback(
     (id: string, trigger: HTMLButtonElement) => {
       lastTrigger.current = trigger
+      setAnalysisRequest(undefined)
+      setIncidentSection('summary')
       setSelectedId(id)
     },
     []
@@ -659,6 +739,328 @@ function IncidentBoard() {
     }
   }
 
+  function setBoardMode(wall: boolean) {
+    const url = new URL(window.location.href)
+    if (wall) url.searchParams.set('wall', '1')
+    else url.searchParams.delete('wall')
+    window.history.replaceState(window.history.state, '', url)
+    setWallMode(wall)
+  }
+
+  function closeDashboardPanels() {
+    setSelectedId(null)
+    setHistoryOpen(false)
+    changeDemoOpen(false)
+    setShiftBriefOpen(false)
+    setFiltersOpen(false)
+    setAssessmentId(null)
+  }
+
+  function executeIncidentCommand(
+    intent: Extract<VoiceIntent, { action: 'incident' }>
+  ): VoiceCommandResult {
+    const snapshot = voiceSnapshot.current
+    if (!snapshot) return 'Данные дашборда ещё не загружены.'
+    const reference = intent.reference.toLowerCase()
+    if (reference === 'recommended') showVoiceBrief('next')
+    const context = voiceContext.current
+    const contextualId =
+      (reference === 'current' ? selectedId : null) ??
+      (context?.runId === snapshot.runId ? context.id : undefined)
+    const ids = snapshot.incidents.map(({ id }) => id)
+    const matches =
+      reference === 'current' || reference === 'recommended'
+        ? ids.filter((id) => id === contextualId)
+        : resolveVoiceIncidentIds(ids, reference)
+    if (!matches.length) {
+      if (reference === 'current') return 'Укажите номер инцидента.'
+      if (reference === 'recommended')
+        return 'В очереди нет рекомендованной заявки.'
+      return `В текущей выгрузке нет инцидента по номеру ${intent.reference}.`
+    }
+
+    function run(id: string): VoiceCommandResult {
+      const latest = voiceSnapshot.current
+      const incident = latest?.incidents.find((item) => item.id === id)
+      if (!latest || latest.runId !== snapshot?.runId || !incident)
+        return 'Выгрузка изменилась. Повторите команду.'
+      switch (intent.operation) {
+        case 'assessRisk':
+          if (
+            !buildQueueSummary(latest.incidents, sortNow).rising.some(
+              (item) => item.id === id
+            )
+          )
+            return `Для ${id} сейчас нет признаков для оценки эскалации.`
+          return {
+            message: `Оцениваю риск для ${id}.`,
+            open: () => {
+              closeDashboardPanels()
+              setAssessmentId(id)
+            },
+          }
+        case 'open':
+        case 'analyze':
+        case 'handoff':
+          if (
+            intent.operation === 'handoff' &&
+            !incident.groups.includes('coordinators')
+          )
+            return `Раздел «Передача» доступен для заявок у координаторов. ${id} сейчас в другой очереди.`
+          return {
+            message: `Открываю ${id}.`,
+            open: () => {
+              closeDashboardPanels()
+              openIncident(id)
+              if (intent.operation === 'handoff') setIncidentSection('handoff')
+              if (intent.operation === 'analyze') {
+                analysisSequence.current += 1
+                setAnalysisRequest(analysisSequence.current)
+              }
+              setConversationFocus({ id, runId: latest.runId })
+              voiceContext.current = {
+                id,
+                runId: latest.runId,
+                topic: 'owner',
+                why: '',
+              }
+            },
+          }
+        case 'watch':
+        case 'unwatch': {
+          const enabled = intent.operation === 'watch'
+          setWatched(id, enabled)
+          return enabled ? `Отслеживаю ${id}.` : `Отслеживание ${id} выключено.`
+        }
+        case 'see':
+        case 'claim':
+        case 'release': {
+          const kind = intent.operation
+          if (!coordination?.operator)
+            return 'Укажите имя дежурного в карточке заявки, затем повторите команду.'
+          const entry = coordination.entries.get(id)
+          if (kind === 'release' && !entry?.claimed?.mine)
+            return `${id} сейчас не закреплён за вами.`
+          if (kind !== 'release' && !isActive(incident))
+            return `${id} сейчас не в активной очереди.`
+          if (kind === 'claim' && entry?.claimed)
+            return `${id} уже в работе у ${entry.claimed.name}.`
+          if (kind === 'see' && entry?.seen)
+            return `По ${id} уже поставлена отметка «Увидел».`
+          const labels = {
+            see: ['Отметить просмотр', 'Просмотр отмечен'],
+            claim: ['Взять в работу', 'Заявка взята в работу на дежурке'],
+            release: ['Освободить', 'Заявка освобождена на дежурке'],
+          }[kind]
+          return {
+            message: `${labels[0]} ${id} от имени ${coordination.operator.name}?`,
+            confirmation: () => {
+              const current = voiceSnapshot.current
+              if (
+                current?.runId !== latest.runId ||
+                !current.incidents.some((item) => item.id === id)
+              ) {
+                toast.message('Выгрузка изменилась. Повторите команду.')
+                return
+              }
+              void coordinationAction
+                .mutateAsync({ kind, incidentId: id })
+                .then(
+                  () => toast.success(`${labels[1]} · ${id}`),
+                  (error: Error) => toast.error(error.message)
+                )
+            },
+          }
+        }
+        case 'startFocus':
+          if (personalFocus)
+            return 'Личный фокус уже активен. Сначала завершите его.'
+          if (!incident.groups.includes('critical'))
+            return 'Личный фокус доступен для критических инцидентов.'
+          return {
+            message: `Личный фокус на ${id}.`,
+            open: () => {
+              closeDashboardPanels()
+              saveFocus(startFocus(latest, id))
+            },
+          }
+      }
+    }
+
+    if (matches.length === 1) return run(matches[0])
+    return {
+      message: 'Подходят несколько заявок. Выберите нужную.',
+      choices: matches.map((id) => ({
+        label: [
+          id,
+          snapshot.incidents.find((item) => item.id === id)?.productName,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        run: () => run(id),
+      })),
+    }
+  }
+
+  function executeVoiceIntent(intent: VoiceIntent): VoiceCommandResult {
+    switch (intent.action) {
+      case 'brief':
+        return showVoiceBrief(intent.topic)
+      case 'help':
+        return 'Можно открыть демо, историю передач, бриф смены, видеостену или карточку INC, запросить сводку по заявке и оценить риск. Можно применить фильтр, отсортировать очередь, следить за заявкой, поставить отметку смены, переключить тему и настроить оповещения.'
+      case 'unsupported':
+        return 'Команда недоступна или требует уточнения. Скажите «Что ты умеешь?».'
+      case 'reset':
+        resetFilters()
+        return { message: 'Фильтры сброшены.', open: closeDashboardPanels }
+      case 'sort':
+        setFilterPrefs({ sortBy: intent.sortBy })
+        return { message: 'Сортировка изменена.', open: closeDashboardPanels }
+      case 'filter': {
+        const next = defaultIncidentFilterPrefs()
+        for (const key of intent.filters) next[key] = true
+        next.query = intent.query
+        if (intent.states) next.states = [...new Set(intent.states)]
+        if (intent.priorities) next.priorities = [...new Set(intent.priorities)]
+        if (intent.lanes) next.queueGroups = [...new Set(intent.lanes)]
+        if (intent.deadline) next.deadlineFilter = intent.deadline
+        if (intent.hideResolved) next.hideResolved = true
+        replaceFilterPrefs(next)
+        return {
+          message: 'Фильтры применены.',
+          open: () => {
+            closeDashboardPanels()
+            const lane =
+              intent.lanes?.[0] ??
+              (intent.states?.length === 1 && intent.states[0] === 'Research'
+                ? 'research'
+                : undefined)
+            if (lane) scrollToGroup(lane, true)
+          },
+        }
+      }
+      case 'incident':
+        return executeIncidentCommand(intent)
+      case 'close':
+        return { message: 'Окно закрыто.', open: closeDashboardPanels }
+      case 'view':
+        if (intent.view === 'demo' && !voiceSnapshot.current)
+          return 'Данные дашборда ещё не загружены.'
+        return {
+          message: {
+            demo: 'Открываю демо.',
+            board: 'Обычный режим.',
+            wall: 'Режим видеостены.',
+            history: 'Открываю историю передач.',
+            shiftBrief: 'Открываю бриф смены.',
+            filters: 'Открываю фильтры.',
+          }[intent.view],
+          open: () => {
+            closeDashboardPanels()
+            switch (intent.view) {
+              case 'demo':
+                setDefenseWizardOpen(true)
+                break
+              case 'board':
+                setBoardMode(false)
+                break
+              case 'wall':
+                setBoardMode(true)
+                break
+              case 'history':
+                setHistoryOpen(true)
+                break
+              case 'shiftBrief':
+                setShiftBriefOpen(true)
+                break
+              case 'filters':
+                setFiltersOpen(true)
+                break
+            }
+          },
+        }
+      case 'demo':
+        if (!voiceSnapshot.current) return 'Данные дашборда ещё не загружены.'
+        if (intent.operation === 'start' || intent.operation === 'apply') {
+          const runId = voiceSnapshot.current.runId
+          return {
+            message:
+              intent.operation === 'start'
+                ? 'Сбросить демо-выгрузку и начать сценарий?'
+                : 'Применить шаг и изменить демо-выгрузку?',
+            confirmation: () => {
+              if (voiceSnapshot.current?.runId !== runId) {
+                toast.message('Выгрузка изменилась. Повторите команду.')
+                return
+              }
+              closeDashboardPanels()
+              defenseActions.current?.run(intent.operation)
+            },
+          }
+        }
+        return {
+          message: 'Перехожу к шагу демо.',
+          open: () => {
+            closeDashboardPanels()
+            defenseActions.current?.run(intent.operation)
+          },
+        }
+      case 'theme':
+        setTheme(intent.theme)
+        return 'Тема изменена.'
+      case 'endFocus':
+        if (!personalFocus) return 'Личный фокус уже выключен.'
+        saveFocus(null)
+        return 'Личный фокус завершён.'
+      case 'toggle':
+        switch (intent.setting) {
+          case 'shiftFocus':
+            if (intent.enabled !== shiftFocusOn) toggleShiftFocus()
+            return intent.enabled
+              ? 'Фокус смены включён.'
+              : 'Фокус смены выключен.'
+          case 'detailCards':
+            setCalmPrefs({
+              enabled: !intent.enabled,
+              compactCards: !intent.enabled,
+            })
+            return intent.enabled
+              ? 'Показываю подробные карточки.'
+              : 'Показываю компактные карточки.'
+          case 'sound':
+            setShiftAlerts({ sound: intent.enabled })
+            return intent.enabled ? 'Звук включён.' : 'Звук выключен.'
+          case 'desktop':
+            if (intent.enabled && desktopNotificationPermission() !== 'granted')
+              return 'Разрешите уведомления в браузере, затем повторите команду.'
+            setShiftAlerts({ desktop: intent.enabled })
+            return intent.enabled
+              ? 'Push-уведомления включены.'
+              : 'Push-уведомления выключены.'
+          case 'emptyColumns':
+            setFilterPrefs({ hideEmptyColumns: !intent.enabled })
+            return intent.enabled
+              ? 'Показываю пустые колонки.'
+              : 'Скрываю пустые колонки.'
+        }
+    }
+  }
+
+  async function applyVoiceCommand(transcript: string, signal: AbortSignal) {
+    if (signal.aborted) return ''
+    const known = matchVoiceCommand(transcript)
+    if (known) return executeVoiceIntent(known)
+    try {
+      const intent = await interpretVoiceCommand(transcript, signal)
+      return signal.aborted ? '' : executeVoiceIntent(intent)
+    } catch (error) {
+      if (signal.aborted) return ''
+      const fallback = voiceSearchFallback(transcript)
+      if (fallback) return executeVoiceIntent(fallback)
+      throw error
+    }
+  }
+
   return (
     <div className='flex min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden'>
       {!wallMode && (
@@ -717,7 +1119,7 @@ function IncidentBoard() {
             className='mx-0.5 hidden h-6 max-lg:order-4 lg:block'
           />
           <div className='flex shrink-0 items-center gap-1 max-lg:order-4'>
-            <ShiftAlertsControl />
+            <ShiftAlertsControl prefs={alertPrefs} setPrefs={setShiftAlerts} />
             <ThemeSwitch />
           </div>
         </Header>
@@ -771,13 +1173,7 @@ function IncidentBoard() {
                   <Button
                     size='sm'
                     variant='outline'
-                    onClick={() => {
-                      const url = new URL(window.location.href)
-                      if (wallMode) url.searchParams.delete('wall')
-                      else url.searchParams.set('wall', '1')
-                      window.history.replaceState({}, '', url)
-                      setWallMode(!wallMode)
-                    }}
+                    onClick={() => setBoardMode(true)}
                   >
                     Видеостена
                   </Button>
@@ -786,12 +1182,7 @@ function IncidentBoard() {
                   <Button
                     size='sm'
                     variant='outline'
-                    onClick={() => {
-                      const url = new URL(window.location.href)
-                      url.searchParams.delete('wall')
-                      window.history.replaceState({}, '', url)
-                      setWallMode(false)
-                    }}
+                    onClick={() => setBoardMode(false)}
                   >
                     Обычный режим
                   </Button>
@@ -836,6 +1227,8 @@ function IncidentBoard() {
                   setPrefs={setFilterPrefs}
                   reset={resetFilters}
                   activeCount={filterActiveCount}
+                  open={filtersOpen}
+                  onOpenChange={setFiltersOpen}
                   incidents={data?.incidents ?? []}
                   detailCards={!calmPrefs.enabled}
                   onDetailCardsChange={(detail) =>
@@ -870,6 +1263,8 @@ function IncidentBoard() {
               <QueueSummaryStrip
                 incidents={data?.incidents ?? []}
                 now={sortNow}
+                assessmentId={assessmentId}
+                onAssessment={setAssessmentId}
                 onOpen={(id) => openIncident(id, true)}
               />
             </div>
@@ -911,6 +1306,11 @@ function IncidentBoard() {
                       calmMode={calmPrefs.enabled}
                       compactCard={calmPrefs.enabled && calmPrefs.compactCards}
                       previewLimit={40}
+                      demoAttentionKey={
+                        demoIncident?.groups.includes(column.key)
+                          ? demoReveal?.key
+                          : undefined
+                      }
                     />
                   )
                 )}
@@ -963,8 +1363,9 @@ function IncidentBoard() {
       />
       <DefenseWizard
         open={defenseWizardOpen}
-        onOpenChange={setDefenseWizardOpen}
-        onFocusIncident={(id) => openIncident(id, false)}
+        onOpenChange={changeDemoOpen}
+        actionsRef={defenseActions}
+        onFocusIncident={revealDemoIncident}
       />
       <Dialog open={shiftBriefOpen} onOpenChange={setShiftBriefOpen}>
         <DialogContent className='max-w-md'>
@@ -1003,6 +1404,9 @@ function IncidentBoard() {
           <IncidentDetails
             key={selected.id}
             incident={selected}
+            section={incidentSection}
+            analysisRequest={analysisRequest}
+            onSectionChange={setIncidentSection}
             onStartFocus={
               data && !personalFocus && selected.groups.includes('critical')
                 ? () => {

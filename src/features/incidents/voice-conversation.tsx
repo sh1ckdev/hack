@@ -13,6 +13,7 @@ export function VoiceConversation({
   draft,
   onDraftChange,
   onRecord,
+  onExecute,
   onOpen,
   snapshot,
   focusId,
@@ -20,6 +21,7 @@ export function VoiceConversation({
   draft: string
   onDraftChange: (draft: string) => void
   onRecord: () => void
+  onExecute: () => void
   onOpen: (id: string) => void
   snapshot?: { runId: string; version: number }
   focusId?: string
@@ -171,10 +173,19 @@ export function VoiceConversation({
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
           maxLength={500}
-          aria-label='Вопрос о смене'
-          placeholder='Напишите или запишите вопрос'
+          aria-label='Команда или вопрос'
+          placeholder='Напишите команду или вопрос'
           disabled={pending}
         />
+        <Button
+          type='button'
+          size='sm'
+          variant='outline'
+          disabled={pending || !draft.trim()}
+          onClick={onExecute}
+        >
+          Выполнить команду
+        </Button>
         <Button type='submit' size='sm' disabled={pending || !draft.trim()}>
           {pending ? 'Готовлю ответ…' : 'Спросить'}
         </Button>

@@ -3,7 +3,6 @@ import { Bookmark, ExternalLink, Link2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { incidentDestination } from './incident-destination'
-import { ShiftCoordinationMark } from './shift-coordination'
 import {
   formatDate,
   remainingTime,
@@ -14,6 +13,7 @@ import {
   priorityLabel,
   type Incident,
 } from './model'
+import { ShiftCoordinationMark } from './shift-coordination'
 import { buildSlaForecast } from './sla-forecast'
 import { useNow } from './use-now'
 
@@ -26,6 +26,7 @@ function IncidentCardInner({
   incident,
   cardId,
   highlighted,
+  demoAttentionKey,
   linked,
   watched,
   priorityShiftHint,
@@ -40,6 +41,7 @@ function IncidentCardInner({
   incident: Incident & { revision: string; groups?: string[] }
   cardId: string
   highlighted?: boolean
+  demoAttentionKey?: number
   linked?: boolean
   watched?: boolean
   priorityShiftHint?: string
@@ -79,19 +81,26 @@ function IncidentCardInner({
       className={cn(
         'min-w-0 scroll-mt-4 rounded-2xl border border-border bg-card transition-colors duration-150 hover:bg-[var(--color-background-hover)] focus:outline-2 focus:outline-ring',
         compact ? 'px-3.5 py-2.5' : room ? 'px-4 py-4' : 'px-4 py-3.5',
-        critical &&
-          'border-signal/20 bg-signal/[0.02]',
+        critical && 'border-signal/20 bg-signal/[0.02]',
         watched && 'ring-1 ring-foreground/20',
-        linked && 'z-[1] ring-1 ring-inset ring-foreground/25',
+        linked && 'z-[1] ring-1 ring-foreground/25 ring-inset',
+        demoAttentionKey !== undefined && 'relative',
         highlighted && !critical && 'ring-1 ring-foreground/20'
       )}
     >
+      {demoAttentionKey !== undefined && (
+        <span
+          key={demoAttentionKey}
+          className='demo-card-attention'
+          aria-hidden
+        />
+      )}
       <div className='flex items-start justify-between gap-3'>
         <div className='min-w-0 space-y-0.5'>
           <div className='flex flex-wrap items-center gap-1.5'>
             <h3
               className={cn(
-                'font-medium leading-[1.25] break-words text-foreground',
+                'leading-[1.25] font-medium break-words text-foreground',
                 room ? 'text-lg' : 'text-base'
               )}
             >
@@ -140,7 +149,7 @@ function IncidentCardInner({
       )}
       {priorityShiftHint && (
         <p
-          className='mt-1.5 rounded-sm border border-border px-2 py-0.5 text-[11px] text-muted-foreground wrap-anywhere'
+          className='mt-1.5 rounded-sm border border-border px-2 py-0.5 text-[11px] wrap-anywhere text-muted-foreground'
           title='Недавний сдвиг приоритета'
         >
           {priorityShiftHint}
@@ -165,9 +174,7 @@ function IncidentCardInner({
       <dl
         className={cn(
           'grid gap-x-3 gap-y-1.5',
-          compact
-            ? 'mt-1.5 grid-cols-2 text-xs'
-            : 'mt-2.5 grid-cols-2 text-sm'
+          compact ? 'mt-1.5 grid-cols-2 text-xs' : 'mt-2.5 grid-cols-2 text-sm'
         )}
       >
         <div className='col-span-2'>
@@ -182,7 +189,7 @@ function IncidentCardInner({
           </dd>
         </div>
         {compact && (
-          <div className='col-span-2 text-[11px] text-muted-foreground wrap-anywhere'>
+          <div className='col-span-2 text-[11px] wrap-anywhere text-muted-foreground'>
             <span className='tabular-nums'>
               {formatDate(incident.submitDate)}
             </span>
@@ -262,9 +269,7 @@ function IncidentCardInner({
           {onToggleWatch && (
             <button
               type='button'
-              aria-label={
-                watched ? 'Убрать из слежения' : 'Держать на смене'
-              }
+              aria-label={watched ? 'Убрать из слежения' : 'Держать на смене'}
               aria-pressed={watched}
               className={cn(
                 'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground',
@@ -294,6 +299,7 @@ export const IncidentCard = memo(
   (left, right) =>
     left.incident.revision === right.incident.revision &&
     left.highlighted === right.highlighted &&
+    left.demoAttentionKey === right.demoAttentionKey &&
     left.watched === right.watched &&
     left.priorityShiftHint === right.priorityShiftHint &&
     left.compact === right.compact &&

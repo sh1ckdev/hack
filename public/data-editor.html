@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Выгрузка · МТС Дежурка</title>
+    <link rel="icon" href="/images/favicon.svg">
+    <link rel="stylesheet" href="/data-editor.css">
+    <script src="/data-editor.js" defer></script>
+  </head>
+  <body>
+    <header class="top">
+      <a class="home" href="/">МТС Дежурка</a>
+      <a href="/">К очередям команды</a>
+    </header>
+    <main>
+      <h1>Выгрузка инцидентов</h1>
+      <p class="intro">Откройте JSON с компьютера или измените текущий файл. Дашборд обновится после сохранения.</p>
+      <form id="access" hidden>
+        <label for="key">Ключ доступа</label>
+        <div class="access-row">
+          <input id="key" type="password" required autocomplete="off" spellcheck="false">
+          <button type="submit">Открыть редактор</button>
+        </div>
+      </form>
+      <section id="workspace" aria-label="Редактор выгрузки" hidden>
+        <div class="toolbar">
+          <label for="json">Активный файл · JSON</label>
+          <div class="actions">
+            <button type="button" id="import">Импортировать файл</button>
+            <input type="file" id="file" accept=".json,application/json" hidden>
+            <button type="button" id="reload">Загрузить с сервера</button>
+            <button type="button" class="primary" id="save" disabled>Сохранить</button>
+          </div>
+        </div>
+        <textarea id="json" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+      </section>
+      <p id="status" role="status" aria-live="polite">Загружаю текущую выгрузку…</p>
+    </main>
+  </body>
+</html>

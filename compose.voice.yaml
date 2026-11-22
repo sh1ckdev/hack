@@ -1,0 +1,27 @@
+services:
+  app:
+    environment:
+      INCIDENTS_WHISPER_URL: http://whisper:8178/inference
+      INCIDENTS_VOICE_MODEL_URL: http://qwen:8180/v1/chat/completions
+  whisper:
+    image: ${WHISPER_IMAGE:-ghcr.io/ggml-org/whisper.cpp:main}
+    restart: unless-stopped
+    command: ["exec whisper-server --host 0.0.0.0 --port 8178 --language ru -m /models/whisper.bin"]
+    volumes:
+      - type: bind
+        source: ${WHISPER_MODEL_PATH:?Set WHISPER_MODEL_PATH to a multilingual model file}
+        target: /models/whisper.bin
+        read_only: true
+        bind:
+          create_host_path: false
+  qwen:
+    image: ${VOICE_LLM_IMAGE:-ghcr.io/ggml-org/llama.cpp:server}
+    restart: unless-stopped
+    command: ["--host", "0.0.0.0", "--port", "8180", "--ctx-size", "4096", "--parallel", "1", "--model", "/models/voice.gguf"]
+    volumes:
+      - type: bind
+        source: ${VOICE_AI_MODEL_PATH:?Set VOICE_AI_MODEL_PATH to the Qwen GGUF file}
+        target: /models/voice.gguf
+        read_only: true
+        bind:
+          create_host_path: false

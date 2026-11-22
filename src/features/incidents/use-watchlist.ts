@@ -17,20 +17,22 @@ function readIds() {
 export function useWatchlist() {
   const [ids, setIds] = useState<string[]>(readIds)
 
-  const toggle = useCallback(
-    (id: string) => {
-      setIds((current) => {
-        const next = current.includes(id)
-          ? current.filter((item) => item !== id)
-          : [...current, id]
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-        return next
-      })
-    },
-    []
-  )
+  const setWatched = useCallback((id: string, enabled?: boolean) => {
+    setIds((current) => {
+      const previouslyWatched = current.includes(id)
+      const shouldWatch = enabled ?? !previouslyWatched
+      if (previouslyWatched === shouldWatch) return current
+      const next = previouslyWatched
+        ? current.filter((item) => item !== id)
+        : [...current, id]
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
+  }, [])
+
+  const toggle = useCallback((id: string) => setWatched(id), [setWatched])
 
   const isWatched = useCallback((id: string) => ids.includes(id), [ids])
 
-  return { ids, toggle, isWatched, watched: new Set(ids) }
+  return { ids, toggle, setWatched, isWatched, watched: new Set(ids) }
 }

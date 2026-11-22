@@ -9,6 +9,15 @@ import {
 } from '@/components/ui/dialog'
 import { VoiceConversation } from './voice-conversation'
 
+export type VoiceCommandResult =
+  | string
+  | { message: string; open: () => void }
+  | { message: string; confirmation: () => void }
+  | {
+      message: string
+      choices: { label: string; run: () => VoiceCommandResult }[]
+    }
+
 type VoiceState =
   | 'idle'
   | 'starting'
@@ -78,7 +87,10 @@ export function VoiceCommand({
   snapshot,
   focusId,
 }: {
-  onTranscript: (transcript: string, signal: AbortSignal) => Promise<string>
+  onTranscript: (
+    transcript: string,
+    signal: AbortSignal
+  ) => Promise<VoiceCommandResult>
   onStart: () => void
   answer: ReactNode
   onOpenIncident?: () => void
@@ -89,6 +101,15 @@ export function VoiceCommand({
   const [state, setState] = useState<VoiceState>('idle')
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
+  const [decision, setDecision] = useState<Exclude<
+    VoiceCommandResult,
+    string
+  > | null>(null)
+  const afterClose = useRef<(() => void) | null>(null)
+  const transcriptHandler = useRef(onTranscript)
+  useEffect(() => {
+    transcriptHandler.current = onTranscript
+  }, [onTranscript])
   const [transcript, setTranscript] = useState('')
   const [draft, setDraft] = useState('')
   const questionMode = useRef(false)
@@ -132,6 +153,48 @@ export function VoiceCommand({
     setOpen(false)
   }
 
+  function presentResult(result: VoiceCommandResult) {
+    setDecision(null)
+    setMessage(typeof result === 'string' ? result : result.message)
+    if (typeof result === 'string') return
+    if ('open' in result) {
+      afterClose.current = result.open
+      closeDialog(false)
+    } else {
+      setDecision(result)
+    }
+  }
+
+  async function executeCommand(command: string, signal: AbortSignal) {
+    updateState('interpreting')
+    const result = await transcriptHandler.current(command, signal)
+    if (!signal.aborted) presentResult(result)
+  }
+
+  async function executeDraft() {
+    const command = draft.trim()
+    if (!command || stateRef.current !== 'idle') return
+    requestRef.current?.abort()
+    const controller = new AbortController()
+    requestRef.current = controller
+    onStart()
+    setDecision(null)
+    setTranscript(command)
+    setMessage('')
+    try {
+      await executeCommand(command, controller.signal)
+    } catch (error) {
+      if (!controller.signal.aborted)
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : 'Не удалось выполнить команду.'
+        )
+    } finally {
+      if (!controller.signal.aborted) updateState('idle')
+    }
+  }
+
   async function transcribe(signal: AbortSignal) {
     if (signal.aborted || stateRef.current !== 'recording') return
     const context = contextRef.current
@@ -153,6 +216,10 @@ export function VoiceCommand({
       form.append('file', wav, 'voice-command.wav')
       form.append('response_format', 'json')
       form.append('language', 'ru')
+      form.append(
+        'prompt',
+        'МТС Дежурка. Инцидент, номер заявки, демо-режим, исследование ситуации, видеостена.'
+      )
       const response = await fetch('/api/voice/inference', {
         method: 'POST',
         body: form,
@@ -188,9 +255,7 @@ export function VoiceCommand({
         setMessage('Проверьте расшифровку и нажмите «Спросить».')
         return
       }
-      updateState('interpreting')
-      const outcome = await onTranscript(transcript, signal)
-      if (!signal.aborted) setMessage(outcome)
+      await executeCommand(transcript, signal)
     } catch (error) {
       if (signal.aborted) return
       const reason =
@@ -318,6 +383,7 @@ export function VoiceCommand({
       onStart()
       setTranscript('')
       setMessage('')
+      setDecision(null)
       setDraft('')
       setOpen(true)
       updateState('starting')
@@ -367,7 +433,10 @@ export function VoiceCommand({
           overlayClassName='bg-black/55'
           onCloseAutoFocus={(event) => {
             event.preventDefault()
-            if (restoreFocusRef.current) buttonRef.current?.focus()
+            const callback = afterClose.current
+            afterClose.current = null
+            if (callback) callback()
+            else if (restoreFocusRef.current) buttonRef.current?.focus()
           }}
         >
           <div className='grid justify-items-center gap-2 px-5 text-center'>
@@ -406,11 +475,51 @@ export function VoiceCommand({
             </div>
           )}
           {state === 'idle' && answer}
+          {state === 'idle' && decision && (
+            <div className='flex max-h-44 flex-wrap gap-2 overflow-y-auto'>
+              {'choices' in decision &&
+                decision.choices.map(({ label, run }) => (
+                  <Button
+                    key={label}
+                    type='button'
+                    variant='outline'
+                    onClick={() => presentResult(run())}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              {'confirmation' in decision && (
+                <>
+                  <Button
+                    type='button'
+                    onClick={() => {
+                      afterClose.current = decision.confirmation
+                      setDecision(null)
+                      closeDialog()
+                    }}
+                  >
+                    Подтвердить
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={() => {
+                      setDecision(null)
+                      setMessage('Команда отменена.')
+                    }}
+                  >
+                    Отмена
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
           <div hidden={state !== 'idle'}>
             <VoiceConversation
               draft={draft}
               onDraftChange={setDraft}
               onRecord={() => toggle(true)}
+              onExecute={() => void executeDraft()}
               onOpen={(id) => {
                 closeDialog(false)
                 onOpenReference(id)

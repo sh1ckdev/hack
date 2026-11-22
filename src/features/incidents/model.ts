@@ -403,6 +403,16 @@ export const analysisSchema = z.object({
   action: z.string().trim().min(1),
   revision: z.string(),
   source: z.enum(['openai', 'openrouter', 'template']).optional(),
+  review: z.object({
+    evidence: z.array(z.object({label: z.string(), text: z.string()})),
+    events: z.array(z.object({
+      seq: z.number(),
+      at: z.string(),
+      title: z.string(),
+      detail: z.string().optional(),
+    })),
+    nextStep: z.string(),
+  }).optional(),
 })
 
 export function incidentLink(template: string, incident: Incident) {

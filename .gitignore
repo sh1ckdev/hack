@@ -4,3 +4,9 @@ dist/
 .env.local
 .vitest-attachments/
 .local/
+
+/dist-server/
+/.env.deploy
+/deploy-data/
+
+*.demo-start.json

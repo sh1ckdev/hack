@@ -3,19 +3,27 @@ import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { laneTitle, type ShiftTrailPlan } from './shift-trail'
 
-export type ActiveShiftTrail = ShiftTrailPlan & { key: number }
+export type ActiveShiftTrail = ShiftTrailPlan & { key: number; demo?: boolean }
 
 function laneAnchor(
   scroller: HTMLElement,
-  laneKey: string
+  laneKey: string,
+  demo = false
 ): { x: number; y: number } | null {
   const lane = scroller.querySelector<HTMLElement>(
     `[data-queue-lane="${laneKey}"]`
   )
   if (!lane) return null
   const rect = lane.getBoundingClientRect()
+  const center = rect.left + rect.width / 2
+  const viewport = scroller.getBoundingClientRect()
+  // Keep the chip readable when the originating lane is outside the viewport.
+  const inset = Math.min(92, viewport.width / 3)
+  const x = demo
+    ? Math.max(viewport.left + inset, Math.min(viewport.right - inset, center))
+    : center
   return {
-    x: rect.left + rect.width / 2,
+    x,
     y: rect.top + Math.min(96, rect.height * 0.35),
   }
 }
@@ -41,8 +49,8 @@ function ShiftTrailSpark({
       return
     }
 
-    const start = laneAnchor(scroller, trail.fromLane)
-    const end = laneAnchor(scroller, trail.toLane)
+    const start = laneAnchor(scroller, trail.fromLane, trail.demo)
+    const end = laneAnchor(scroller, trail.toLane, trail.demo)
     if (!start || !end) {
       onDone(trail.key)
       return
@@ -86,11 +94,15 @@ function ShiftTrailSpark({
         },
         {
           transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.92)`,
-          opacity: 0.2,
+          opacity: trail.demo ? 0.72 : 0.2,
           filter: 'blur(0.5px)',
         },
       ],
-      { duration: 1_350, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' }
+      {
+        duration: 1_350,
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        fill: 'forwards',
+      }
     )
 
     const lineAnim = line.animate(

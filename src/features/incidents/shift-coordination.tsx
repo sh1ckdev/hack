@@ -90,20 +90,18 @@ export function ShiftCoordinationMark({ id }: { id: string }) {
   )
 }
 
-export function ShiftCoordinationActions({
-  id,
-  active,
-}: {
-  id: string
-  active: boolean
-}) {
+export function useShiftCoordinationAction() {
   const context = useContext(ShiftContext)
-  const entry = context?.entries.get(id)
   const operator = context?.operator
-  const [name, setName] = useState('')
   const client = useQueryClient()
   const action = useMutation({
-    mutationFn: async (kind: CoordinationCommand['action']) => {
+    mutationFn: async ({
+      incidentId,
+      kind,
+    }: {
+      incidentId: string
+      kind: CoordinationCommand['action']
+    }) => {
       if (!operator) throw new Error('Укажите имя дежурного.')
       const response = await fetch('/api/shift-coordination', {
         method: 'POST',
@@ -111,7 +109,7 @@ export function ShiftCoordinationActions({
           'Content-Type': 'application/json',
           'X-Relay-Request': 'shift-coordination',
         },
-        body: JSON.stringify({ incidentId: id, operator, action: kind }),
+        body: JSON.stringify({ incidentId, operator, action: kind }),
       })
       if (!response.ok) {
         const body = await response.json().catch(() => ({}))
@@ -124,6 +122,20 @@ export function ShiftCoordinationActions({
     },
     onSettled: () => client.invalidateQueries({ queryKey }),
   })
+  return { context, action }
+}
+
+export function ShiftCoordinationActions({
+  id,
+  active,
+}: {
+  id: string
+  active: boolean
+}) {
+  const { context, action } = useShiftCoordinationAction()
+  const entry = context?.entries.get(id)
+  const operator = context?.operator
+  const [name, setName] = useState('')
   if (!context || (!active && !entry?.seen && !entry?.claimed)) return null
   return (
     <section
@@ -177,7 +189,7 @@ export function ShiftCoordinationActions({
               size='sm'
               variant='outline'
               disabled={action.isPending}
-              onClick={() => action.mutate('see')}
+              onClick={() => action.mutate({ kind: 'see', incidentId: id })}
             >
               Увидел
             </Button>
@@ -187,7 +199,7 @@ export function ShiftCoordinationActions({
               type='button'
               size='sm'
               disabled={action.isPending}
-              onClick={() => action.mutate('claim')}
+              onClick={() => action.mutate({ kind: 'claim', incidentId: id })}
             >
               Беру в работу
             </Button>
@@ -198,7 +210,7 @@ export function ShiftCoordinationActions({
               size='sm'
               variant='outline'
               disabled={action.isPending}
-              onClick={() => action.mutate('release')}
+              onClick={() => action.mutate({ kind: 'release', incidentId: id })}
             >
               Освободить заявку
             </Button>

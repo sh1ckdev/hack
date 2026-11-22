@@ -28,4 +28,4 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 cd "$ROOT"
-npm run dev
+npm run dev -- "$@"

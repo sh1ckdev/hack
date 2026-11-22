@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,7 +12,7 @@ import {
 import type { Incident } from './model'
 import {
   buildQueueSummary,
-  escalationAssessmentSchema,
+  escalationResponseSchema,
   escalationSignalLabel,
   type QueueSummary,
   type RisingIncident,
@@ -35,7 +36,17 @@ function IncidentRef({
   )
 }
 
-function ModelAssessment({ item }: { item: RisingIncident }) {
+function ModelAssessment({
+  item,
+  open,
+  onOpenChange,
+  trigger = true,
+}: {
+  item: RisingIncident
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  trigger?: boolean
+}) {
   const assessment = useMutation({
     mutationFn: async () => {
       const response = await fetch(
@@ -56,25 +67,33 @@ function ModelAssessment({ item }: { item: RisingIncident }) {
       if (JSON.stringify(result.signals) !== JSON.stringify(item.signals)) {
         throw new Error('Признаки изменились. Запросите оценку ещё раз.')
       }
-      return escalationAssessmentSchema.parse(result)
+      return escalationResponseSchema.parse(result)
     },
   })
 
+  const requested = useRef(false)
+  const { isPending, mutate } = assessment
+  useEffect(() => {
+    if (!open) requested.current = false
+    else if (!requested.current && !isPending) {
+      requested.current = true
+      mutate()
+    }
+  }, [open, isPending, mutate])
+
   return (
-    <Dialog
-      onOpenChange={(open) => {
-        if (open && !assessment.isPending) assessment.mutate()
-      }}
-    >
-      <DialogTrigger asChild>
-        <button
-          type='button'
-          className='ms-2 text-link underline-offset-2 hover:underline'
-          aria-label={`Оценить риск с ИИ для ${item.id}`}
-        >
-          Оценить с ИИ
-        </button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {trigger && (
+        <DialogTrigger asChild>
+          <button
+            type='button'
+            className='ms-2 text-link underline-offset-2 hover:underline'
+            aria-label={`Оценить риск с ИИ для ${item.id}`}
+          >
+            Оценить с ИИ
+          </button>
+        </DialogTrigger>
+      )}
       <DialogContent className='max-h-[calc(100dvh-2rem)] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle>Оценка риска с ИИ</DialogTitle>
@@ -93,7 +112,24 @@ function ModelAssessment({ item }: { item: RisingIncident }) {
                 Главный признак:{' '}
                 {escalationSignalLabel[assessment.data.primarySignal]}.
               </p>
-              <p>{assessment.data.explanation}</p>
+              {Boolean(assessment.data.observations?.length) && (
+                <div>
+                  <p className='font-medium text-foreground'>
+                    Что видно в заявке и очереди
+                  </p>
+                  <ul className='mt-1 list-disc space-y-1 ps-5'>
+                    {assessment.data.observations?.map((fact) => (
+                      <li key={fact}>{fact}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div>
+                <p className='font-medium text-foreground'>
+                  Почему это повышает риск
+                </p>
+                <p className='mt-1'>{assessment.data.explanation}</p>
+              </div>
               <p>
                 <span className='font-medium text-foreground'>
                   Что проверить:
@@ -123,20 +159,24 @@ export function QueueSummaryStrip({
   incidents,
   now,
   onOpen,
+  assessmentId,
+  onAssessment,
 }: {
   incidents: Incident[]
   now: number
   onOpen: (id: string) => void
+  assessmentId: string | null
+  onAssessment: (id: string | null) => void
 }) {
   const summary: QueueSummary = buildQueueSummary(incidents, now)
   const shownRising = summary.rising.slice(0, 3)
   const hiddenRising = summary.rising.length - shownRising.length
+  const additionalAssessment = shownRising.some(({ id }) => id === assessmentId)
+    ? undefined
+    : summary.rising.find(({ id }) => id === assessmentId)
 
   return (
-    <section
-      aria-label='Сводка смены'
-      className='space-y-1 px-4 py-3 text-sm'
-    >
+    <section aria-label='Сводка смены' className='space-y-1 px-4 py-3 text-sm'>
       <h3 className='text-xs text-muted-foreground'>Сводка смены</h3>
       {summary.first ? (
         <p>
@@ -186,7 +226,13 @@ export function QueueSummaryStrip({
                       {' · '}
                       {item.signals.length} признака
                     </span>
-                    <ModelAssessment item={item} />
+                    <ModelAssessment
+                      item={item}
+                      open={assessmentId === item.id}
+                      onOpenChange={(open) =>
+                        onAssessment(open ? item.id : null)
+                      }
+                    />
                   </li>
                 ))}
               </ul>
@@ -196,6 +242,17 @@ export function QueueSummaryStrip({
             )}
           </div>
         </>
+      )}
+      {additionalAssessment && (
+        <ModelAssessment
+          key={additionalAssessment.id}
+          item={additionalAssessment}
+          open
+          onOpenChange={(open) => {
+            if (!open) onAssessment(null)
+          }}
+          trigger={false}
+        />
       )}
     </section>
   )

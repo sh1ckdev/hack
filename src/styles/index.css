@@ -188,3 +188,24 @@
     0 8px 24px -8px color-mix(in srgb, var(--foreground) 18%, transparent),
     0 0 0 1px color-mix(in srgb, var(--border) 80%, transparent);
 }
+
+.demo-card-attention {
+  position: absolute;
+  z-index: 1;
+  inset: -2px;
+  border: 2px solid var(--color-signal);
+  border-radius: inherit;
+  pointer-events: none;
+  animation: demo-card-attention 2.6s ease-out both;
+}
+
+@keyframes demo-card-attention {
+  0%, 66% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-card-attention {
+    animation-timing-function: steps(1, end);
+  }
+}

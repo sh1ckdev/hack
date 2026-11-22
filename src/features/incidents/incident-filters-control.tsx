@@ -180,6 +180,8 @@ export function IncidentFiltersControl({
   incidents,
   detailCards,
   onDetailCardsChange,
+  open,
+  onOpenChange,
   className,
 }: {
   prefs: IncidentFilterPrefs
@@ -189,6 +191,8 @@ export function IncidentFiltersControl({
   incidents: DashboardSnapshot['incidents']
   detailCards?: boolean
   onDetailCardsChange?: (enabled: boolean) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
   className?: string
 }) {
   const facets = useMemo(() => incidentFilterFacets(incidents), [incidents])
@@ -226,7 +230,7 @@ export function IncidentFiltersControl({
   }
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
         <Button
           type='button'

@@ -1,7 +1,8 @@
 import { spawnSync } from 'node:child_process'
-import { realpathSync, statSync } from 'node:fs'
+import { existsSync, realpathSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { createInterface } from 'node:readline'
+import { defaultDataFile } from './demo-lib.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const steps = [
@@ -14,14 +15,17 @@ const steps = [
 ]
 
 async function main() {
-  const path = process.argv[2]
-  if (!path || path === '--help') {
-    console.log('npm run demo:show -- /путь/к/отдельной-демо-выгрузке.json')
+  const path = process.argv[2] ?? defaultDataFile()
+  if (path === '--help') {
+    console.log('npm run demo:show [-- /путь/к/отдельной-демо-выгрузке.json]')
     return
   }
+  if (!existsSync(path)) throw new Error('Выгрузка не найдена. Запустите npm run demo:showcase или укажите путь к копии.')
   const file = realpathSync(path)
   const protectedPaths = ['character_problems.json', 'character_problems.source.json']
-    .map((name) => realpathSync(resolve(root, 'data', name)))
+    .map((name) => resolve(root, 'data', name))
+    .concat(resolve(root, '.local', 'showcase', 'character_problems.source.json'))
+    .filter(existsSync)
   const target = statSync(file)
   if (!target.isFile() || protectedPaths.some((path) => {
     const { dev, ino } = statSync(path)

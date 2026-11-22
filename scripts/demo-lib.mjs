@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 export const COORDINATORS = 'КЦ ИТ Координаторы Массовых Инцидентов'
@@ -20,7 +21,7 @@ export const DEMO_IDS = {
 }
 
 export function defaultDataFile() {
-  return resolve(import.meta.dirname, '..', 'data', 'character_problems.json')
+  return resolve(import.meta.dirname, '..', '.local', 'showcase', 'character_problems.json')
 }
 
 export function loadIncidents(file) {
@@ -33,7 +34,17 @@ export function loadIncidents(file) {
 }
 
 export function saveIncidents(file, data) {
-  writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`, 'utf8')
+  const temporary = `${file}.${randomUUID()}.tmp`
+  try {
+    writeFileSync(temporary, `${JSON.stringify(data, null, 2)}\n`, {
+      encoding: 'utf8',
+      mode: 0o600,
+      flag: 'wx',
+    })
+    renameSync(temporary, file)
+  } finally {
+    rmSync(temporary, { force: true })
+  }
 }
 
 export function findById(data, id) {
@@ -47,6 +58,13 @@ export function patchById(data, id, patch) {
   Object.assign(row, patch)
   if (patch.priorityId != null) {
     row.priority = PRIORITY_LABELS[patch.priorityId] ?? row.priority
+  }
+  if (patch.stateEnum === 'WorkInProgress') {
+    row.stateId = 2
+    row.state = 'В работе'
+  } else if (patch.stateEnum === 'Research') {
+    row.stateId = 20
+    row.state = 'Исследование'
   }
   return row
 }

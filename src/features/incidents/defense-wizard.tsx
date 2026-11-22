@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useImperativeHandle, useRef, useState, type Ref } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -25,18 +25,25 @@ async function postDemo(path: string) {
   return body
 }
 
+export type DefenseWizardActions = {
+  run: (operation: 'start' | 'apply' | 'skip' | 'restart') => void
+}
+
 export function DefenseWizard({
   open,
   onOpenChange,
   onFocusIncident,
+  actionsRef,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onFocusIncident: (id: string) => void
+  onFocusIncident: (id: string, scenario?: DefenseScenarioKey) => void
+  actionsRef: Ref<DefenseWizardActions>
 }) {
   const queryClient = useQueryClient()
   const [step, setStep] = useState(0)
   const [busy, setBusy] = useState(false)
+  const inFlight = useRef(false)
 
   const isIntro = step === 0
   const isDone = step > DEFENSE_STEPS.length
@@ -46,34 +53,47 @@ export function DefenseWizard({
       : undefined
 
   async function resetDemo() {
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     try {
       await postDemo('/api/demo/reset')
       await queryClient.resetQueries({ queryKey: ['incident-dashboard'] })
       toast.success('Выгрузка сброшена.')
       setStep(1)
+      requestAnimationFrame(() => onFocusIncident(DEFENSE_DEMO_INCIDENT_ID))
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Сброс недоступен (только dev).'
+        error instanceof Error
+          ? error.message
+          : 'Сброс недоступен (только dev).'
       )
     } finally {
+      inFlight.current = false
       setBusy(false)
     }
   }
 
   async function runScenario(key: DefenseScenarioKey) {
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     try {
       await postDemo(`/api/demo/scenario/${encodeURIComponent(key)}`)
       await queryClient.invalidateQueries({ queryKey: ['incident-dashboard'] })
       toast.success('Сценарий применён.')
       setStep((s) => s + 1)
-      requestAnimationFrame(() => onFocusIncident(DEFENSE_DEMO_INCIDENT_ID))
+      requestAnimationFrame(() =>
+        onFocusIncident(DEFENSE_DEMO_INCIDENT_ID, key)
+      )
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Не удалось применить сценарий.'
+        error instanceof Error
+          ? error.message
+          : 'Не удалось применить сценарий.'
       )
     } finally {
+      inFlight.current = false
       setBusy(false)
     }
   }
@@ -81,6 +101,30 @@ export function DefenseWizard({
   function nextAfterScenario() {
     setStep((s) => s + 1)
   }
+
+  useImperativeHandle(actionsRef, () => ({
+    run(operation) {
+      if (inFlight.current) {
+        toast.message('Дождитесь завершения демо-шага.')
+        return
+      }
+      onOpenChange(true)
+      switch (operation) {
+        case 'start':
+          void resetDemo()
+          break
+        case 'apply':
+        case 'skip':
+          if (!current) toast.message('Откройте шаг демо, чтобы продолжить.')
+          else if (operation === 'apply') void runScenario(current.key)
+          else nextAfterScenario()
+          break
+        case 'restart':
+          setStep(0)
+          break
+      }
+    },
+  }))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
@@ -100,9 +144,7 @@ export function DefenseWizard({
           <div className='space-y-2 text-sm'>
             <ol className='max-h-32 list-decimal space-y-0.5 overflow-y-auto ps-4 text-xs text-muted-foreground'>
               {DEFENSE_STEPS.map((s) => (
-                <li key={s.key}>
-                  {s.title}
-                </li>
+                <li key={s.key}>{s.title}</li>
               ))}
             </ol>
           </div>

@@ -2,6 +2,7 @@ import { memo, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DEFENSE_DEMO_INCIDENT_ID } from './defense-script'
 import { IncidentCard } from './incident-card'
 import type { DashboardSnapshot } from './model'
 
@@ -23,6 +24,7 @@ export const QueueLane = memo(
     ready,
     highlightedIds,
     attentionKey,
+    demoAttentionKey,
     isWatched,
     onToggleWatch,
     onOpenCard,
@@ -46,6 +48,7 @@ export const QueueLane = memo(
     ready: boolean
     highlightedIds: string
     attentionKey?: number
+    demoAttentionKey?: number
     isWatched: (id: string) => boolean
     onToggleWatch?: (id: string) => void
     onOpenCard: (id: string, trigger: HTMLButtonElement) => void
@@ -80,11 +83,15 @@ export const QueueLane = memo(
         id={`queue-${groupKey}`}
         aria-labelledby={`group-${groupKey}`}
         className={cn(
-          'relative flex h-full min-w-[17rem] min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card'
+          'relative flex h-full min-h-0 min-w-[17rem] flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card'
         )}
       >
         {attentionKey !== undefined && (
-          <span key={attentionKey} aria-hidden className='critical-lane-attention' />
+          <span
+            key={attentionKey}
+            aria-hidden
+            className='critical-lane-attention'
+          />
         )}
         <div
           className={cn(
@@ -97,7 +104,7 @@ export const QueueLane = memo(
           <h3
             id={`group-${groupKey}`}
             className={cn(
-              'granat-title flex min-w-0 items-center gap-1.5 wrap-anywhere',
+              'flex min-w-0 items-center gap-1.5 granat-title wrap-anywhere',
               room ? 'text-xl' : 'text-sm'
             )}
           >
@@ -119,11 +126,19 @@ export const QueueLane = memo(
             {ready ? items.length : '—'}
           </Badge>
         </div>
-        <div className='no-scrollbar min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-y-contain p-2.5'>
+        <div
+          data-queue-cards
+          className='no-scrollbar min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-y-contain p-2.5'
+        >
           {visible.map((incident) => (
             <IncidentCard
               key={`${groupKey}-${incident.id}`}
               incident={incident}
+              demoAttentionKey={
+                incident.id === DEFENSE_DEMO_INCIDENT_ID
+                  ? demoAttentionKey
+                  : undefined
+              }
               cardId={`incident-${groupKey}-${incident.id}`}
               highlighted={highlightSet.has(incident.id)}
               linked={linkedIncidentId === incident.id}
@@ -138,9 +153,7 @@ export const QueueLane = memo(
               compact={compactCard}
               room={room}
               onToggleWatch={
-                onToggleWatch
-                  ? () => onToggleWatch(incident.id)
-                  : undefined
+                onToggleWatch ? () => onToggleWatch(incident.id) : undefined
               }
               onOpen={(trigger) => onOpenCard(incident.id, trigger)}
               onLinkEnter={
@@ -184,9 +197,7 @@ export const QueueLane = memo(
               aria-expanded={expanded}
               onClick={() => setExpanded((open) => !open)}
             >
-              {expanded
-                ? 'Свернуть'
-                : `Показать все (${items.length})`}
+              {expanded ? 'Свернуть' : `Показать все (${items.length})`}
             </Button>
           </div>
         )}
@@ -200,6 +211,7 @@ export const QueueLane = memo(
     left.ready === right.ready &&
     left.highlightedIds === right.highlightedIds &&
     left.attentionKey === right.attentionKey &&
+    left.demoAttentionKey === right.demoAttentionKey &&
     left.title === right.title &&
     left.groupKey === right.groupKey &&
     left.calmMode === right.calmMode &&

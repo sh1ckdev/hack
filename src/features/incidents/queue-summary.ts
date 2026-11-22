@@ -17,6 +17,10 @@ export const escalationAssessmentSchema = z.object({
   nextStep: z.string().trim().min(1).max(300),
 })
 
+export const escalationResponseSchema = escalationAssessmentSchema.extend({
+  observations: z.array(z.string()).max(4).optional(),
+})
+
 export const escalationSignalLabel: Record<EscalationSignal, string> = {
   sameProduct: 'тот же продукт, что у критического',
   unassigned: 'нет исполнителя',

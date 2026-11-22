@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Bell, BellOff, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   desktopNotificationPermission,
-  readShiftAlertPrefs,
   requestDesktopNotificationPermission,
   primeShiftAlertAudio,
   showDesktopNotification,
   testShiftAlertSound,
-  writeShiftAlertPrefs,
   type ShiftAlertPrefs,
 } from './shift-alerts'
 
@@ -25,7 +23,7 @@ function SoundToggle({
       type='button'
       size='sm'
       variant={enabled ? 'secondary' : 'outline'}
-      className='h-8 max-md:px-2 rounded-sm gap-1.5 px-2.5 text-xs font-normal'
+      className='h-8 gap-1.5 rounded-sm px-2.5 text-xs font-normal max-md:px-2'
       aria-pressed={enabled}
       aria-label={enabled ? 'Звук включён' : 'Звук выключен'}
       title='Звуковой сигнал при изменениях в выгрузке'
@@ -95,7 +93,7 @@ function DesktopNotificationToggle({
         type='button'
         size='sm'
         variant='default'
-        className='h-8 max-md:px-2 rounded-sm gap-1.5 px-2.5 text-xs font-normal'
+        className='h-8 gap-1.5 rounded-sm px-2.5 text-xs font-normal max-md:px-2'
         onClick={() => void requestAccess()}
       >
         <Bell aria-hidden className='size-3.5' />
@@ -110,7 +108,7 @@ function DesktopNotificationToggle({
         type='button'
         size='sm'
         variant='outline'
-        className='h-8 rounded-sm gap-1.5 px-2.5 text-xs font-normal'
+        className='h-8 gap-1.5 rounded-sm px-2.5 text-xs font-normal'
         disabled
         title='Включите уведомления для этого сайта в настройках браузера'
       >
@@ -125,9 +123,11 @@ function DesktopNotificationToggle({
       type='button'
       size='sm'
       variant={enabled ? 'secondary' : 'outline'}
-      className='h-8 rounded-sm gap-1.5 px-2.5 text-xs font-normal'
+      className='h-8 gap-1.5 rounded-sm px-2.5 text-xs font-normal'
       aria-pressed={enabled}
-      aria-label={enabled ? 'Push-уведомления включены' : 'Push-уведомления выключены'}
+      aria-label={
+        enabled ? 'Push-уведомления включены' : 'Push-уведомления выключены'
+      }
       onClick={() => onEnabledChange(!enabled)}
     >
       <Bell aria-hidden className='size-3.5' />
@@ -138,23 +138,24 @@ function DesktopNotificationToggle({
   )
 }
 
-export function ShiftAlertsControl({ className }: { className?: string }) {
-  const [prefs, setPrefs] = useState<ShiftAlertPrefs>(() => readShiftAlertPrefs())
+export function ShiftAlertsControl({
+  className,
+  prefs,
+  setPrefs,
+}: {
+  className?: string
+  prefs: ShiftAlertPrefs
+  setPrefs: (patch: Partial<ShiftAlertPrefs>) => void
+}) {
   const [permission, setPermission] = useState(desktopNotificationPermission)
 
   useEffect(() => {
     setPermission(desktopNotificationPermission())
   }, [])
 
-  const persist = useCallback((next: ShiftAlertPrefs) => {
-    setPrefs(next)
-    writeShiftAlertPrefs(next)
-  }, [])
-
   useEffect(() => {
-    if (permission === 'granted' || !prefs.desktop) return
-    persist({ ...prefs, desktop: false })
-  }, [permission, prefs.desktop, prefs, persist])
+    if (permission !== 'granted' && prefs.desktop) setPrefs({ desktop: false })
+  }, [permission, prefs.desktop, setPrefs])
 
   return (
     <div
@@ -164,13 +165,13 @@ export function ShiftAlertsControl({ className }: { className?: string }) {
     >
       <SoundToggle
         enabled={prefs.sound}
-        onChange={(sound) => persist({ ...prefs, sound })}
+        onChange={(sound) => setPrefs({ sound })}
       />
       <DesktopNotificationToggle
         permission={permission}
         enabled={prefs.desktop}
         onPermissionChange={setPermission}
-        onEnabledChange={(desktop) => persist({ ...prefs, desktop })}
+        onEnabledChange={(desktop) => setPrefs({ desktop })}
       />
     </div>
   )
